@@ -2,7 +2,9 @@ name: CI
 
 on:
   push:
+    branches: [ main ]
   pull_request:
+    branches: [ main ]
 
 env:
   CARGO_TERM_COLOR: always
@@ -29,7 +31,7 @@ jobs:
       run: cargo test --verbose --no-default-features --features ${{ matrix.features }}
 
   clippy:
-    name: Clippy
+    name: Clippy (${{ matrix.features }})
     runs-on: ubuntu-latest
     
     strategy:
