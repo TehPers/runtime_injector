@@ -143,6 +143,7 @@
 //! ```
 
 #![forbid(unsafe_code)]
+#![deny(missing_docs)]
 #![allow(
     clippy::module_name_repetitions,
     clippy::missing_errors_doc,
