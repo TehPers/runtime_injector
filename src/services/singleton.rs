@@ -1,4 +1,7 @@
-use crate::{Dependencies, InjectResult, Injector, ProviderFunction, Service, Svc, TypedProvider};
+use crate::{
+    Dependencies, InjectResult, Injector, ProviderFunction, Service, Svc,
+    TypedProvider,
+};
 use std::marker::PhantomData;
 
 pub struct SingletonProvider<D, R, F>
@@ -35,7 +38,10 @@ where
 {
     type Result = R;
 
-    fn provide_typed(&mut self, injector: &mut Injector) -> InjectResult<Svc<Self::Result>> {
+    fn provide_typed(
+        &mut self,
+        injector: &mut Injector,
+    ) -> InjectResult<Svc<Self::Result>> {
         if let Some(ref service) = self.result {
             return Ok(service.clone());
         }

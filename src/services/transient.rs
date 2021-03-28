@@ -1,4 +1,7 @@
-use crate::{Dependencies, InjectResult, Injector, ProviderFunction, Service, Svc, TypedProvider};
+use crate::{
+    Dependencies, InjectResult, Injector, ProviderFunction, Service, Svc,
+    TypedProvider,
+};
 use std::marker::PhantomData;
 
 pub struct TransientProvider<D, R, F>
@@ -33,7 +36,10 @@ where
 {
     type Result = R;
 
-    fn provide_typed(&mut self, injector: &mut Injector) -> InjectResult<Svc<Self::Result>> {
+    fn provide_typed(
+        &mut self,
+        injector: &mut Injector,
+    ) -> InjectResult<Svc<Self::Result>> {
         self.func.invoke(injector)
     }
 }

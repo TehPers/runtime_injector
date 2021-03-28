@@ -3,7 +3,7 @@ use std::any::{Any, TypeId};
 
 #[cfg(feature = "arc")]
 mod types {
-    use crate::InjectError;
+    use crate::{InjectError, ServiceInfo};
     use std::{any::Any, sync::Arc};
 
     /// A reference-counted pointer holding a service. The pointer type is
@@ -18,7 +18,11 @@ mod types {
     pub type InjectResult<T> = Result<T, InjectError>;
 
     /// Implemented automatically on types that are capable of being a service.
-    pub trait Service: Any + Send + Sync {}
+    pub trait Service: Any + Send + Sync {
+        fn service_info(&self) -> ServiceInfo {
+            ServiceInfo::of::<Self>()
+        }
+    }
     impl<T: ?Sized + Any + Send + Sync> Service for T {}
 }
 
@@ -39,7 +43,11 @@ mod types {
     pub type InjectResult<T> = Result<T, InjectError>;
 
     /// Implemented automatically on types that are capable of being a service.
-    pub trait Service: Any {}
+    pub trait Service: Any {
+        fn service_info(&self) -> ServiceInfo {
+            ServiceInfo::of::<Self>()
+        }
+    }
     impl<T: ?Sized + Any> Service for T {}
 }
 
@@ -104,9 +112,15 @@ pub enum InjectError {
         implementation: ServiceInfo,
     },
 
+    #[display(fmt = "the registered provider returned the wrong type")]
+    InvalidProvider { service_info: ServiceInfo },
+
     /// An unexpected error has occurred. This is usually caused by a bug in
     /// the library itself.
-    #[display(fmt = "an unexpected error occurred (please report this): {}", _0)]
+    #[display(
+        fmt = "an unexpected error occurred (please report this): {}",
+        _0
+    )]
     InternalError(#[error(ignore)] String),
 }
 

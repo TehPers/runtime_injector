@@ -1,6 +1,6 @@
 use crate::{
-    DynSvc, InjectError, InjectResult, InjectorBuilder, Interface, Provider, Service, ServiceInfo,
-    Svc,
+    DynSvc, InjectError, InjectResult, InjectorBuilder, Interface, Provider,
+    Service, ServiceInfo, Svc,
 };
 use std::collections::HashMap;
 
@@ -45,26 +45,27 @@ impl Injector {
     /// Trait`) cannot be used with this function.
     pub fn get_exact<T: Service>(&mut self) -> InjectResult<Svc<T>> {
         let service_info = ServiceInfo::of::<T>();
-        self.get_dyn_exact(service_info)?.downcast().map_err(|_| {
-            InjectError::InternalError(format!(
-                "request for {} yielded the wrong type of service",
-                service_info.name()
-            ))
-        })
+        self.get_dyn_exact(service_info)?
+            .downcast()
+            .map_err(|_| InjectError::InvalidProvider { service_info })
     }
 
     /// Similar to `get_exact`, but returns an instance of `dyn Any` instead,
     /// and does not need the type passed in via a type parameter.
-    pub fn get_dyn_exact(&mut self, service_info: ServiceInfo) -> InjectResult<DynSvc> {
+    pub fn get_dyn_exact(
+        &mut self,
+        service_info: ServiceInfo,
+    ) -> InjectResult<DynSvc> {
         let provider = self
             .providers
             .get_mut(&service_info)
             .ok_or(InjectError::MissingProvider { service_info })?;
 
-        let mut provider = provider.take().ok_or(InjectError::CycleDetected {
-            service_info,
-            cycle: vec![service_info],
-        })?;
+        let mut provider =
+            provider.take().ok_or(InjectError::CycleDetected {
+                service_info,
+                cycle: vec![service_info],
+            })?;
 
         let result = match provider.provide(self) {
             Ok(result) => result,
@@ -79,14 +80,14 @@ impl Injector {
         };
 
         // Need to get the entry again since it could have been removed by a provider (it shouldn't have though)
-        let provider_entry = self.providers.get_mut(&service_info).ok_or_else(|| {
-            InjectError::InternalError(format!(
-                "activated provider for {} is no longer registered",
-                service_info.name()
-            ))
-        })?;
-        let old_value = provider_entry.replace(provider);
-        if let Some(_) = old_value {
+        let provider_entry =
+            self.providers.get_mut(&service_info).ok_or_else(|| {
+                InjectError::InternalError(format!(
+                    "activated provider for {} is no longer registered",
+                    service_info.name()
+                ))
+            })?;
+        if let Some(_) = provider_entry.replace(provider) {
             return Err(InjectError::InternalError(format!(
                 "another provider for {} was added during its activation",
                 service_info.name()
@@ -94,5 +95,46 @@ impl Injector {
         }
 
         Ok(result)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use core::panic;
+
+    use crate::{
+        DynSvc, InjectError, InjectResult, Injector, Provider, ServiceInfo, Svc,
+    };
+
+    #[test]
+    fn get_exact_returns_error_on_invalid_provider() {
+        struct BadProvider;
+        impl Provider for BadProvider {
+            fn result(&self) -> ServiceInfo {
+                ServiceInfo::of::<i32>()
+            }
+
+            fn provide(
+                &mut self,
+                _injector: &mut Injector,
+            ) -> InjectResult<DynSvc> {
+                Ok(Svc::new(1.2f32))
+            }
+        }
+
+        let mut builder = Injector::builder();
+        builder.provide(BadProvider);
+
+        let mut injector = builder.build();
+        let bad: InjectResult<Svc<i32>> = injector.get();
+
+        match bad {
+            Err(InjectError::InvalidProvider { service_info })
+                if service_info == ServiceInfo::of::<i32>() => {}
+            Err(error) => Err(error).unwrap(),
+            Ok(value) => {
+                panic!("Value of {} was provided by an invalid provider", value)
+            }
+        }
     }
 }

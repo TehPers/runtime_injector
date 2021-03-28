@@ -1,4 +1,4 @@
-use crate::{Injector, InterfaceFor, Provider, Service, ServiceInfo, TypedProvider};
+use crate::{Injector, InterfaceFor, Provider, Service, ServiceInfo};
 use std::collections::HashMap;
 
 #[derive(Default)]
@@ -8,13 +8,18 @@ pub struct InjectorBuilder {
 }
 
 impl InjectorBuilder {
-    pub fn provide<P: TypedProvider>(&mut self, provider: P) -> Option<Box<dyn Provider>> {
-        let result = ServiceInfo::of::<P::Result>();
+    pub fn provide<P: Provider>(
+        &mut self,
+        provider: P,
+    ) -> Option<Box<dyn Provider>> {
+        let result = provider.result();
         let provider = Box::new(provider);
         self.providers.insert(result, Some(provider)).flatten()
     }
 
-    pub fn implement<Interface, Implementation>(&mut self) -> Option<ServiceInfo>
+    pub fn implement<Interface, Implementation>(
+        &mut self,
+    ) -> Option<ServiceInfo>
     where
         Interface: ?Sized + InterfaceFor<Implementation>,
         Implementation: Service,

@@ -1,5 +1,6 @@
 use crate::{
-    constant, interface, InjectError, Injector, IntoSingleton, IntoTransient, ServiceInfo, Svc,
+    constant, interface, InjectError, Injector, IntoSingleton, IntoTransient,
+    ServiceInfo, Svc,
 };
 use std::sync::Mutex;
 
@@ -128,7 +129,13 @@ fn constants() {
 
 #[test]
 fn interfaces() {
+    #[cfg(feature = "rc")]
     pub trait Foo {
+        fn bar(&self) -> i32;
+    }
+
+    #[cfg(feature = "arc")]
+    pub trait Foo: Send + Sync {
         fn bar(&self) -> i32;
     }
 
