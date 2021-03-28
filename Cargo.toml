@@ -9,6 +9,10 @@ repository = "https://github.com/TehPers/runtime_injector"
 documentation = "https://docs.rs/runtime_injector"
 keywords = ["dependency-injection", "di", "ioc"]
 readme = "README.md"
+exclude = [
+    ".github/*",
+    ".vscode/*",
+]
 
 [features]
 default = ["rc"]
