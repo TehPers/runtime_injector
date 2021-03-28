@@ -1,0 +1,27 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  test:
+    name: Rust ${{matrix.}}
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        rust_version: [stable, beta, nightly]
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v2
+    - name: Setup toolchain
+      uses: dtolnay/rust-toolchain@stable
+      with:
+        toolchain: ${{ matrix.rust_version }}
+    - name: Run tests
+      run: cargo test --verbose --all-features
