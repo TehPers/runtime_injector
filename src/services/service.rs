@@ -3,7 +3,7 @@ use std::any::{Any, TypeId};
 
 #[cfg(feature = "arc")]
 mod types {
-    use crate::{InjectError, ServiceInfo};
+    use crate::InjectError;
     use std::{any::Any, sync::Arc};
 
     /// A reference-counted pointer holding a service. The pointer type is
@@ -18,11 +18,7 @@ mod types {
     pub type InjectResult<T> = Result<T, InjectError>;
 
     /// Implemented automatically on types that are capable of being a service.
-    pub trait Service: Any + Send + Sync {
-        fn service_info(&self) -> ServiceInfo {
-            ServiceInfo::of::<Self>()
-        }
-    }
+    pub trait Service: Any + Send + Sync {}
     impl<T: ?Sized + Any + Send + Sync> Service for T {}
 }
 
@@ -43,11 +39,7 @@ mod types {
     pub type InjectResult<T> = Result<T, InjectError>;
 
     /// Implemented automatically on types that are capable of being a service.
-    pub trait Service: Any {
-        fn service_info(&self) -> ServiceInfo {
-            ServiceInfo::of::<Self>()
-        }
-    }
+    pub trait Service: Any {}
     impl<T: ?Sized + Any> Service for T {}
 }
 
