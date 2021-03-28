@@ -27,3 +27,11 @@ jobs:
         toolchain: ${{ matrix.rust_version }}
     - name: Run tests
       run: cargo test --verbose --no-default-features --features ${{ matrix.features }}
+
+  clippy:
+    name: Clippy
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: dtolnay/rust-toolchain@clippy
+      - run: cargo clippy --tests -- -D clippy::all -D clippy::pedantic

@@ -143,6 +143,7 @@
 //! ```
 
 #![forbid(unsafe_code)]
+#![allow(clippy::module_name_repetitions)]
 
 #[cfg(not(any(feature = "arc", feature = "rc")))]
 compile_error!(
@@ -154,10 +155,12 @@ compile_error!(
     "The 'arc' and 'rc' features are mutually exclusive and cannot be enabled together."
 );
 
+mod builder;
 mod dependency;
 mod injector;
 mod services;
 
+pub use builder::*;
 pub use dependency::*;
 pub use injector::*;
 pub use services::*;

@@ -116,7 +116,7 @@ pub enum InjectError {
     InternalError(#[error(ignore)] String),
 }
 
-fn fmt_cycle(cycle: &Vec<ServiceInfo>) -> String {
+fn fmt_cycle(cycle: &[ServiceInfo]) -> String {
     let mut joined = String::new();
     for item in cycle.iter().rev() {
         if !joined.is_empty() {
