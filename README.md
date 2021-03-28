@@ -29,4 +29,4 @@ This library is licensed under your choice of either [MIT](./LICENSE-MIT) or [Ap
 [doc-badge]: https://img.shields.io/docsrs/runtime_injector?style=flat-square
 [crates-io]: https://crates.io/crates/runtime_injector
 [docs]: https://docs.rs/runtime_injector
-[ms-di]: https://www.nuget.org/packages/ms-di
+[ms-di]: https://www.nuget.org/packages/Microsoft.Extensions.DependencyInjection
