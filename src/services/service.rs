@@ -5,7 +5,6 @@ use std::any::{Any, TypeId};
 
 #[cfg(feature = "arc")]
 mod types {
-    use crate::InjectError;
     use std::{any::Any, sync::Arc};
 
     /// A reference-counted pointer holding a service. The pointer type is
@@ -13,11 +12,7 @@ mod types {
     pub type Svc<T> = Arc<T>;
 
     /// A reference-counted service pointer holding an instance of `dyn Any`.
-    pub type DynSvc = Arc<dyn Any + Send + Sync>;
-
-    /// A result from attempting to inject dependencies into a service and
-    /// construct an instance of it.
-    pub type InjectResult<T> = Result<T, InjectError>;
+    pub type DynSvc = Svc<dyn Any + Send + Sync>;
 
     /// Implemented automatically on types that are capable of being a service.
     pub trait Service: Any + Send + Sync {}
@@ -26,7 +21,6 @@ mod types {
 
 #[cfg(feature = "rc")]
 mod types {
-    use crate::InjectError;
     use std::{any::Any, rc::Rc};
 
     /// A reference-counted pointer holding a service. The pointer type is
@@ -34,11 +28,7 @@ mod types {
     pub type Svc<T> = Rc<T>;
 
     /// A reference-counted service pointer holding an instance of `dyn Any`.
-    pub type DynSvc = Rc<dyn Any>;
-
-    /// A result from attempting to inject dependencies into a service and
-    /// construct an instance of it.
-    pub type InjectResult<T> = Result<T, InjectError>;
+    pub type DynSvc = Svc<dyn Any>;
 
     /// Implemented automatically on types that are capable of being a service.
     pub trait Service: Any {}
@@ -46,6 +36,10 @@ mod types {
 }
 
 pub use types::*;
+
+/// A result from attempting to inject dependencies into a service and
+/// construct an instance of it.
+pub type InjectResult<T> = Result<T, InjectError>;
 
 /// Type information about a service.
 #[derive(Clone, Copy, PartialEq, Eq, Debug, Hash)]
