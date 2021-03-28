@@ -1,9 +1,11 @@
-use crate::{Dependencies, InjectResult, Injector, ProviderFunction, Service, Svc, TypedProvider};
+use crate::{
+    InjectResult, Injector, ProviderFunction, Service, Svc,
+    TypedProvider,
+};
 use std::marker::PhantomData;
 
 pub struct SingletonProvider<D, R, F>
 where
-    D: Dependencies,
     R: Service,
     F: ProviderFunction<D, R>,
 {
@@ -14,7 +16,6 @@ where
 
 impl<D, R, F> SingletonProvider<D, R, F>
 where
-    D: Dependencies,
     R: Service,
     F: ProviderFunction<D, R>,
 {
@@ -29,13 +30,16 @@ where
 
 impl<D, R, F> TypedProvider for SingletonProvider<D, R, F>
 where
-    D: Dependencies,
+    D: 'static,
     R: Service,
     F: ProviderFunction<D, R>,
 {
     type Result = R;
 
-    fn provide_typed(&mut self, injector: &mut Injector) -> InjectResult<Svc<Self::Result>> {
+    fn provide_typed(
+        &mut self,
+        injector: &mut Injector,
+    ) -> InjectResult<Svc<Self::Result>> {
         if let Some(ref service) = self.result {
             return Ok(service.clone());
         }
@@ -50,7 +54,6 @@ where
 /// implemented for all functions which implement `ProviderFunction`.
 pub trait IntoSingleton<D, R, F>
 where
-    D: Dependencies,
     R: Service,
     F: ProviderFunction<D, R>,
 {
@@ -80,7 +83,6 @@ where
 
 impl<D, R, F> IntoSingleton<D, R, F> for F
 where
-    D: Dependencies,
     R: Service,
     F: ProviderFunction<D, R>,
 {
@@ -91,7 +93,6 @@ where
 
 impl<D, R, F> From<F> for SingletonProvider<D, R, F>
 where
-    D: Dependencies,
     R: Service,
     F: ProviderFunction<D, R>,
 {

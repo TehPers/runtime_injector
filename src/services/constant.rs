@@ -27,7 +27,10 @@ where
 {
     type Result = R;
 
-    fn provide_typed(&mut self, _injector: &mut Injector) -> InjectResult<Svc<Self::Result>> {
+    fn provide_typed(
+        &mut self,
+        _injector: &mut Injector,
+    ) -> InjectResult<Svc<Self::Result>> {
         Ok(self.result.clone())
     }
 }

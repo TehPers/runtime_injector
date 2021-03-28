@@ -67,7 +67,11 @@
 //! // we're going to use dynamic dispatch later so that we can determine the
 //! // concrete type at runtime (vs. generics, which are determined instead at
 //! // compile time).
-//! trait DataService {
+//! //
+//! // The `Send` and `Sync` supertrait requirements are only necessary when
+//! // compiling with the "arc" feature to allow for service pointer
+//! // downcasting.
+//! trait DataService: Send + Sync {
 //!     fn get_user(&self, user_id: &str) -> Option<User>;
 //! }
 //!
@@ -139,21 +143,30 @@
 //! ```
 
 #![forbid(unsafe_code)]
+#![allow(
+    clippy::module_name_repetitions,
+    clippy::missing_errors_doc,
+    clippy::needless_pass_by_value
+)]
 
 #[cfg(not(any(feature = "arc", feature = "rc")))]
-compile_error!("Either the 'arc' or 'rc' feature must be enabled (but not both).");
+compile_error!(
+    "Either the 'arc' or 'rc' feature must be enabled (but not both)."
+);
 
 #[cfg(all(feature = "arc", feature = "rc"))]
 compile_error!(
     "The 'arc' and 'rc' features are mutually exclusive and cannot be enabled together."
 );
 
-mod dependency;
+mod builder;
 mod injector;
+mod request;
 mod services;
 
-pub use dependency::*;
+pub use builder::*;
 pub use injector::*;
+pub use request::*;
 pub use services::*;
 
 #[cfg(test)]

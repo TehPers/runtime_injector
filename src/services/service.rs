@@ -1,3 +1,5 @@
+#![allow(clippy::used_underscore_binding)]
+
 use derive_more::{Display, Error};
 use std::any::{Any, TypeId};
 
@@ -52,6 +54,7 @@ pub struct ServiceInfo {
 }
 
 impl ServiceInfo {
+    #[must_use]
     pub fn of<T: ?Sized + Any>() -> Self {
         ServiceInfo {
             id: TypeId::of::<T>(),
@@ -59,10 +62,12 @@ impl ServiceInfo {
         }
     }
 
+    #[must_use]
     pub fn id(&self) -> TypeId {
         self.id
     }
 
+    #[must_use]
     pub fn name(&self) -> &'static str {
         self.name
     }
@@ -104,13 +109,19 @@ pub enum InjectError {
         implementation: ServiceInfo,
     },
 
+    #[display(fmt = "the registered provider returned the wrong type")]
+    InvalidProvider { service_info: ServiceInfo },
+
     /// An unexpected error has occurred. This is usually caused by a bug in
     /// the library itself.
-    #[display(fmt = "an unexpected error occurred (please report this): {}", _0)]
+    #[display(
+        fmt = "an unexpected error occurred (please report this): {}",
+        _0
+    )]
     InternalError(#[error(ignore)] String),
 }
 
-fn fmt_cycle(cycle: &Vec<ServiceInfo>) -> String {
+fn fmt_cycle(cycle: &[ServiceInfo]) -> String {
     let mut joined = String::new();
     for item in cycle.iter().rev() {
         if !joined.is_empty() {

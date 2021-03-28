@@ -1,5 +1,4 @@
 use crate::{InjectError, InjectResult, Injector, Service, ServiceInfo, Svc};
-use std::any::Any;
 
 /// Indicates that a type can resolve services. The most basic implementation
 /// of this trait is that each sized service type can resolve itself. This is
@@ -7,8 +6,8 @@ use std::any::Any;
 /// However, the injector cannot provide exact implementations for dynamic
 /// types (`dyn Trait`). For this reason, any interfaces using traits must be
 /// declared explicitly before use. This trait should usually be implemented
-/// automatically by the `interface!` macro.
-pub trait Interface: Any {
+/// by the `interface!` macro.
+pub trait Interface: Service {
     /// Attempts to resolve a service which implements this interface. If an
     /// implementation type is provided, this **should** attempt to return an
     /// instance of that type. If it cannot, then this should return an error.
@@ -42,15 +41,17 @@ impl<T: Service> Interface for T {
 /// Marker trait that indicates that a type is an interface for another type.
 /// Each sized type is an interface for itself, and each `dyn Trait` is an
 /// interface for the types that it can resolve. This trait should usually be
-/// implemented automatically by the `interface!` macro, and is strictly used
-/// to enforce stronger type checking when assigning implementations for
-/// interfaces.
+/// implemented by the `interface!` macro, and is strictly used to enforce
+/// stronger type checking when assigning implementations for interfaces.
 pub trait InterfaceFor<T: Service>: Interface {}
 impl<T: Service> InterfaceFor<T> for T {}
 
 /// Marks a trait as being an interface for many other types. This means that
 /// a request for the given trait can resolve to any of the types indicated by
 /// this macro invocation.
+///
+/// With the `arc` feature enabled, the trait must be a subtrait of `Send` and
+/// `Sync`. This is necessary to allow the service pointers to be downcasted.
 ///
 /// # Example
 /// ```
@@ -60,7 +61,7 @@ impl<T: Service> InterfaceFor<T> for T {}
 /// #[cfg(test)]
 /// struct MockBar;
 ///
-/// trait Foo {}
+/// trait Foo: Send + Sync {}
 /// impl Foo for Bar {}
 /// #[cfg(test)]
 /// impl Foo for MockBar {}
@@ -87,7 +88,7 @@ macro_rules! interface {
                     $(
                         $(#[$attr])*
                         Some(implementation) if implementation == $crate::ServiceInfo::of::<$impl>() => {
-                            Ok(injector.get::<$impl>()? as $crate::Svc<Self>)
+                            Ok(injector.get::<$crate::Svc<$impl>>()? as $crate::Svc<Self>)
                         }
                     ),*
                     Some(implementation) => {

@@ -5,9 +5,9 @@ authors = ["TehPers <tehperz@gmail.com>"]
 edition = "2018"
 license = "MIT OR Apache-2.0"
 description = "Runtime dependency injection container"
-# repository = "https://github.com/TehPers/runtime_injector"
+repository = "https://github.com/TehPers/runtime_injector"
 # documentation = "https://docs.rs/runtime_injector"
-categories = [""]
+categories = []
 readme = "README.md"
 
 [features]
