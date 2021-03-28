@@ -30,6 +30,7 @@ impl InjectorBuilder {
         )
     }
 
+    #[must_use]
     pub fn build(self) -> Injector {
         Injector::new(self.providers, self.implementations)
     }

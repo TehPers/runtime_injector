@@ -1,3 +1,5 @@
+#![allow(clippy::clippy::blacklisted_name)]
+
 use crate::{
     constant, interface, InjectError, Injector, IntoSingleton, IntoTransient,
     ServiceInfo, Svc,

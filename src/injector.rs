@@ -13,10 +13,12 @@ pub struct Injector {
 }
 
 impl Injector {
+    #[must_use]
     pub fn builder() -> InjectorBuilder {
         InjectorBuilder::default()
     }
 
+    #[must_use]
     pub fn new(
         providers: HashMap<ServiceInfo, Option<Box<dyn Provider>>>,
         implementations: HashMap<ServiceInfo, ServiceInfo>,
@@ -43,6 +45,7 @@ impl Injector {
     /// requested. This will not attempt to find the type registered as an
     /// implementation of a particular trait. In fact, dynamic types (`dyn
     /// Trait`) cannot be used with this function.
+    #[allow(clippy::clippy::map_err_ignore)]
     pub fn get_exact<T: Service>(&mut self) -> InjectResult<Svc<T>> {
         let service_info = ServiceInfo::of::<T>();
         self.get_dyn_exact(service_info)?

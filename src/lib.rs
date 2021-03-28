@@ -143,7 +143,11 @@
 //! ```
 
 #![forbid(unsafe_code)]
-#![allow(clippy::module_name_repetitions)]
+#![allow(
+    clippy::module_name_repetitions,
+    clippy::missing_errors_doc,
+    clippy::needless_pass_by_value
+)]
 
 #[cfg(not(any(feature = "arc", feature = "rc")))]
 compile_error!(

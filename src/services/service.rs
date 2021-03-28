@@ -1,3 +1,5 @@
+#![allow(clippy::used_underscore_binding)]
+
 use derive_more::{Display, Error};
 use std::any::{Any, TypeId};
 
@@ -52,6 +54,7 @@ pub struct ServiceInfo {
 }
 
 impl ServiceInfo {
+    #[must_use]
     pub fn of<T: ?Sized + Any>() -> Self {
         ServiceInfo {
             id: TypeId::of::<T>(),
@@ -59,10 +62,12 @@ impl ServiceInfo {
         }
     }
 
+    #[must_use]
     pub fn id(&self) -> TypeId {
         self.id
     }
 
+    #[must_use]
     pub fn name(&self) -> &'static str {
         self.name
     }
