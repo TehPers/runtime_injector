@@ -1,12 +1,11 @@
 use crate::{
-    Dependencies, InjectResult, Injector, ProviderFunction, Service, Svc,
+    InjectResult, Injector, ProviderFunction, Service, Svc,
     TypedProvider,
 };
 use std::marker::PhantomData;
 
 pub struct SingletonProvider<D, R, F>
 where
-    D: Dependencies,
     R: Service,
     F: ProviderFunction<D, R>,
 {
@@ -17,7 +16,6 @@ where
 
 impl<D, R, F> SingletonProvider<D, R, F>
 where
-    D: Dependencies,
     R: Service,
     F: ProviderFunction<D, R>,
 {
@@ -32,7 +30,7 @@ where
 
 impl<D, R, F> TypedProvider for SingletonProvider<D, R, F>
 where
-    D: Dependencies,
+    D: 'static,
     R: Service,
     F: ProviderFunction<D, R>,
 {
@@ -56,7 +54,6 @@ where
 /// implemented for all functions which implement `ProviderFunction`.
 pub trait IntoSingleton<D, R, F>
 where
-    D: Dependencies,
     R: Service,
     F: ProviderFunction<D, R>,
 {
@@ -86,7 +83,6 @@ where
 
 impl<D, R, F> IntoSingleton<D, R, F> for F
 where
-    D: Dependencies,
     R: Service,
     F: ProviderFunction<D, R>,
 {
@@ -97,7 +93,6 @@ where
 
 impl<D, R, F> From<F> for SingletonProvider<D, R, F>
 where
-    D: Dependencies,
     R: Service,
     F: ProviderFunction<D, R>,
 {

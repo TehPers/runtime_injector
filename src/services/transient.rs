@@ -1,12 +1,10 @@
 use crate::{
-    Dependencies, InjectResult, Injector, ProviderFunction, Service, Svc,
-    TypedProvider,
+    InjectResult, Injector, ProviderFunction, Service, Svc, TypedProvider,
 };
 use std::marker::PhantomData;
 
 pub struct TransientProvider<D, R, F>
 where
-    D: Dependencies,
     R: Service,
     F: ProviderFunction<D, R>,
 {
@@ -16,7 +14,6 @@ where
 
 impl<D, R, F> TransientProvider<D, R, F>
 where
-    D: Dependencies,
     R: Service,
     F: ProviderFunction<D, R>,
 {
@@ -30,7 +27,7 @@ where
 
 impl<D, R, F> TypedProvider for TransientProvider<D, R, F>
 where
-    D: Dependencies,
+    D: 'static,
     R: Service,
     F: ProviderFunction<D, R>,
 {
@@ -46,7 +43,6 @@ where
 
 pub trait IntoTransient<D, R, F>
 where
-    D: Dependencies,
     R: Service,
     F: ProviderFunction<D, R>,
 {
@@ -55,7 +51,6 @@ where
 
 impl<D, R, F> IntoTransient<D, R, F> for F
 where
-    D: Dependencies,
     R: Service,
     F: ProviderFunction<D, R>,
 {
@@ -66,7 +61,6 @@ where
 
 impl<D, R, F> From<F> for TransientProvider<D, R, F>
 where
-    D: Dependencies,
     R: Service,
     F: ProviderFunction<D, R>,
 {

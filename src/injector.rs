@@ -1,5 +1,5 @@
 use crate::{
-    DynSvc, InjectError, InjectResult, InjectorBuilder, Interface, Provider,
+    DynSvc, InjectError, InjectResult, InjectorBuilder, Provider, Request,
     Service, ServiceInfo, Svc,
 };
 use std::collections::HashMap;
@@ -29,16 +29,86 @@ impl Injector {
         }
     }
 
-    /// Gets an implementation of the given type. If the type is a sized type,
-    /// then this will attempt to activate an instance of that type using a
-    /// registered provider. If the type is a dynamic type (`dyn Trait`), then
-    /// an instancethe type registered as the implementation of that trait will
-    /// be activated instead.
-    pub fn get<T: ?Sized + Interface>(&mut self) -> InjectResult<Svc<T>> {
-        T::resolve(
-            self,
-            self.implementations.get(&ServiceInfo::of::<T>()).copied(),
-        )
+    // /// Gets an implementation of the given type. If the type is a sized type,
+    // /// then this will attempt to activate an instance of that type using a
+    // /// registered provider. If the type is a dynamic type (`dyn Trait`), then
+    // /// an instance of the type registered as the implementation of that trait will
+    // /// be activated instead.
+    // pub fn get<T: ?Sized + Interface>(&mut self) -> InjectResult<Svc<T>> {
+    //     T::resolve(
+    //         self,
+    //         self.implementations.get(&ServiceInfo::of::<T>()).copied(),
+    //     )
+    // }
+
+    /// Performs a request for a service. There are several types of requests
+    /// that can be made to the service container by default:
+    ///
+    /// - `Svc<I>`: Request a service pointer to the given interface and create
+    ///   an instance of the service if needed.
+    /// - `Option<Svc<I>>`: Request a service pointer to the given interface and
+    ///   create an instance of the service if needed. If no provider for that
+    ///   service is registered, then return `Ok(None)` rather than throwing an
+    ///   error.
+    ///
+    /// Requests to service pointers of sized types will attempt to use the
+    /// a registered provider to retrieve an instance of that service. For
+    /// instance, a request for a singleton service will create an instance of
+    /// that service if one doesn't exist already, and either return a service
+    /// pointer to the instance that was already created, or return a service
+    /// pointer to the new instance (if one didn't exist already).
+    ///
+    /// ```
+    /// use runtime_injector::{Injector, Svc, IntoSingleton};
+    ///
+    /// #[derive(Default)]
+    /// struct Bar;
+    ///
+    /// let mut builder = Injector::builder();
+    /// builder.provide(Bar::default.singleton());
+    ///
+    /// let mut injector = builder.build();
+    /// let _bar: Svc<Bar> = injector.get().unwrap();
+    /// ```
+    ///
+    /// Requests to service pointers of `dyn Trait` interface types will
+    /// instead request the implementation of that interface type. For example,
+    /// if `dyn Foo`'s registered implementation is for the service type `Bar`,
+    /// then a request for a service pointer of `dyn Foo` will return a service
+    /// pointer to a `Bar`, although the return type will be `Svc<dyn Foo>`.
+    ///
+    /// ```
+    /// use runtime_injector::{interface, Injector, Svc, IntoSingleton};
+    ///
+    /// trait Foo: Send + Sync {}
+    /// interface!(Foo = [Bar]);
+    ///
+    /// #[derive(Default)]
+    /// struct Bar;
+    /// impl Foo for Bar {}
+    ///
+    /// let mut builder = Injector::builder();
+    /// builder.provide(Bar::default.singleton());
+    /// builder.implement::<dyn Foo, Bar>();
+    ///
+    /// let mut injector = builder.build();
+    /// let _bar: Svc<dyn Foo> = injector.get().unwrap();
+    /// ```
+    ///
+    /// Custom request types can also be used by implementing `Request`.
+    pub fn get<R: Request>(&mut self) -> InjectResult<R> {
+        R::request(self)
+    }
+
+    /// Gets the service info for the registered implementation of a particular
+    /// interface. This is only used by `dyn Trait` interface types to request
+    /// the registered implementation of that trait. For sized service types,
+    /// the implementation is always the type itself.
+    pub fn get_implementation(
+        &mut self,
+        interface: ServiceInfo,
+    ) -> Option<ServiceInfo> {
+        self.implementations.get(&interface).copied()
     }
 
     /// Gets an instance of the service with exactly the type that was

@@ -88,7 +88,7 @@ macro_rules! interface {
                     $(
                         $(#[$attr])*
                         Some(implementation) if implementation == $crate::ServiceInfo::of::<$impl>() => {
-                            Ok(injector.get::<$impl>()? as $crate::Svc<Self>)
+                            Ok(injector.get::<$crate::Svc<$impl>>()? as $crate::Svc<Self>)
                         }
                     ),*
                     Some(implementation) => {

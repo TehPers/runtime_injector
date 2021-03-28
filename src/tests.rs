@@ -1,8 +1,8 @@
 #![allow(clippy::clippy::blacklisted_name)]
 
 use crate::{
-    constant, interface, InjectError, Injector, IntoSingleton, IntoTransient,
-    ServiceInfo, Svc,
+    constant, interface, InjectError, InjectResult, Injector, IntoSingleton,
+    IntoTransient, ServiceInfo, Svc,
 };
 use std::sync::Mutex;
 
@@ -42,11 +42,18 @@ fn can_make_svc1() {
 #[test]
 fn cant_make_svc1_when_no_provider() {
     let mut injector = Injector::builder().build();
-    match injector.get::<Svc1>() {
+    let svc: InjectResult<Svc<Svc1>> = injector.get();
+    match svc {
         Err(InjectError::MissingProvider { service_info })
             if service_info == ServiceInfo::of::<Svc1>() => {}
         Err(error) => Err(error).unwrap(),
         Ok(_) => unreachable!(),
+    }
+
+    let svc: Option<Svc<Svc1>> = injector.get().unwrap();
+    match svc {
+        None => {}
+        Some(_) => panic!("service should not have been created"),
     }
 }
 
@@ -68,7 +75,7 @@ fn cant_make_svc3_when_no_provider_for_dependency() {
     builder.provide(Svc3::new.transient());
 
     let mut injector = builder.build();
-    match injector.get::<Svc3>() {
+    match injector.get::<Svc<Svc3>>() {
         Err(InjectError::MissingDependency {
             dependency_info, ..
         }) if dependency_info == ServiceInfo::of::<Svc1>() => {}
@@ -195,4 +202,21 @@ fn interfaces() {
     let svc: Svc<dyn Foo> = injector.get().unwrap();
 
     assert_eq!(5, svc.bar());
+}
+
+#[test]
+fn a() {
+    trait Foo: Send + Sync {}
+    interface!(Foo = [Bar]);
+
+    #[derive(Default)]
+    struct Bar;
+    impl Foo for Bar {}
+
+    let mut builder = Injector::builder();
+    builder.provide(Bar::default.singleton());
+    builder.implement::<dyn Foo, Bar>();
+    
+    let mut injector = builder.build();
+    let _bar: Svc<dyn Foo> = injector.get().unwrap();
 }
