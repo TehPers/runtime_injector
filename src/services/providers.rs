@@ -28,8 +28,8 @@ where
 
 /// A strongly-typed service provider. Types which implement this provide
 /// instances of a service type when requested. Examples of typed providers
-/// include providers created from factory methods or constant providers. This
-/// should be preferred over `Provider` for custom service providers if
+/// include providers created from service factories or constant providers.
+/// This should be preferred over `Provider` for custom service providers if
 /// possible due to the strong type guarantees this provides. `Provider` is
 /// automatically implemented for all types which implement `TypedProvider`.
 ///
@@ -39,8 +39,8 @@ where
 /// use runtime_injector::{TypedProvider, Injector, InjectResult, Svc};
 ///
 /// struct Foo;
-/// struct FooProvider;
 ///
+/// struct FooProvider;
 /// impl TypedProvider for FooProvider {
 ///     type Result = Foo;
 ///
@@ -65,15 +65,4 @@ pub trait TypedProvider: Provider {
         &mut self,
         injector: &mut Injector,
     ) -> InjectResult<Svc<Self::Result>>;
-}
-
-impl<R: Service> TypedProvider for Box<dyn TypedProvider<Result = R>> {
-    type Result = R;
-
-    fn provide_typed(
-        &mut self,
-        injector: &mut Injector,
-    ) -> InjectResult<Svc<Self::Result>> {
-        self.as_mut().provide_typed(injector)
-    }
 }

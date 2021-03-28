@@ -1,9 +1,30 @@
 use crate::{InjectResult, Injector, Request, Service, Svc};
 
-pub trait ProviderFunction<D, R>: 'static
+/// A factory for creating instances of a service. All functions of arity 12 or
+/// less are automatically service factories if the arguments to that function
+/// are valid service requests and the return value is a valid service type.
+///
+/// ```
+/// use runtime_injector::{ServiceFactory, Injector, Svc};
+///
+/// struct Foo;
+/// struct Bar;
+///
+/// # fn _no_run() {
+/// fn factory(foo: Svc<Foo>) -> Bar { todo!() }
+/// let mut injector: Injector = todo!();
+/// factory.invoke(&mut injector);
+/// # }
+/// ```
+///
+/// # Type parameters
+/// * `D` - Dependencies of this service as a tuple.
+/// * `R` - Resulting service from invoking this service factory.
+pub trait ServiceFactory<D, R>: 'static
 where
     R: Service,
 {
+    /// Invokes this service factory, creating an instance of the service.
     fn invoke(&mut self, injector: &mut Injector) -> InjectResult<Svc<R>>;
 }
 
@@ -17,7 +38,7 @@ macro_rules! impl_provider_function {
         impl_provider_function!($($rest),*);
     };
     (@impl ($($type_name:ident),*)) => {
-        impl <F, R $(, $type_name)*> ProviderFunction<($($type_name,)*), R> for F
+        impl <F, R $(, $type_name)*> ServiceFactory<($($type_name,)*), R> for F
         where
             F: 'static + FnMut($($type_name),*) -> R,
             R: Service,

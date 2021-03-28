@@ -216,7 +216,7 @@ fn a() {
     let mut builder = Injector::builder();
     builder.provide(Bar::default.singleton());
     builder.implement::<dyn Foo, Bar>();
-    
+
     let mut injector = builder.build();
     let _bar: Svc<dyn Foo> = injector.get().unwrap();
 }

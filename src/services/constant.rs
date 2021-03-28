@@ -14,6 +14,8 @@ impl<R> ConstantProvider<R>
 where
     R: Service,
 {
+    /// Creates a new `ConstantProvider` using a predetermined value.
+    #[must_use]
     pub fn new(value: R) -> Self {
         ConstantProvider {
             result: Svc::new(value),

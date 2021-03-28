@@ -13,11 +13,15 @@ pub struct Injector {
 }
 
 impl Injector {
+    /// Creates a build for this injector. This is the preferred way of
+    /// creating an injector.
     #[must_use]
     pub fn builder() -> InjectorBuilder {
         InjectorBuilder::default()
     }
 
+    /// Creates a new injector directly from its providers and implementations.
+    /// Prefer `Injector::builder()` for creating new injectors instead.
     #[must_use]
     pub fn new(
         providers: HashMap<ServiceInfo, Option<Box<dyn Provider>>>,
