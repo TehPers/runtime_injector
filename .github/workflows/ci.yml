@@ -9,12 +9,13 @@ env:
 
 jobs:
   test:
-    name: Rust ${{ matrix.rust_version }}
+    name: Rust ${{ matrix.rust_version }} (${{ matrix.features }})
     runs-on: ubuntu-latest
 
     strategy:
       matrix:
         rust_version: [stable, beta, nightly]
+        features: [rc, arc]
 
     steps:
     - name: Checkout
@@ -24,4 +25,4 @@ jobs:
       with:
         toolchain: ${{ matrix.rust_version }}
     - name: Run tests
-      run: cargo test --verbose --all-features
+      run: cargo test --verbose --no-default-features --features ${{ matrix.features }}
