@@ -9,7 +9,7 @@ env:
 
 jobs:
   test:
-    name: Rust ${{matrix.}}
+    name: Rust ${{ matrix.rust_version }}
     runs-on: ubuntu-latest
 
     strategy:
