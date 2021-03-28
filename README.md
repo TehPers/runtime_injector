@@ -5,7 +5,7 @@
 
 This library provides an easy to use dependency injection container with a focus on ergonomics and configurability at the cost of runtime performance. For a more performance-oriented container, look for a compile-time dependency injection library.
 
-The container should feel similar to anyone familiar with [Microsoft's dependency injection library for C#][ms-di]. Sample code is available on the [docs].
+Sample code is available on the [docs].
 
 ## Getting started
 
@@ -29,4 +29,3 @@ This library is licensed under your choice of either [MIT](./LICENSE-MIT) or [Ap
 [doc-badge]: https://img.shields.io/docsrs/runtime_injector?style=flat-square
 [crates-io]: https://crates.io/crates/runtime_injector
 [docs]: https://docs.rs/runtime_injector
-[ms-di]: https://www.nuget.org/packages/Microsoft.Extensions.DependencyInjection
