@@ -1,8 +1,7 @@
-use crate::{Dependencies, InjectResult, Injector, Interface, Service, Svc};
+use crate::{InjectResult, Injector, Request, Service, Svc};
 
 pub trait ProviderFunction<D, R>: 'static
 where
-    D: Dependencies,
     R: Service,
 {
     fn invoke(&mut self, injector: &mut Injector) -> InjectResult<Svc<R>>;
@@ -18,11 +17,11 @@ macro_rules! impl_provider_function {
         impl_provider_function!($($rest),*);
     };
     (@impl ($($type_name:ident),*)) => {
-        impl <F, R $(, $type_name)*> ProviderFunction<($(Svc<$type_name>,)*), R> for F
+        impl <F, R $(, $type_name)*> ProviderFunction<($($type_name,)*), R> for F
         where
-            F: 'static + FnMut($(Svc<$type_name>),*) -> R,
+            F: 'static + FnMut($($type_name),*) -> R,
             R: Service,
-            $($type_name: ?Sized + Interface,)*
+            $($type_name: Request,)*
         {
             #[allow(unused_variables, unused_mut, unused_assignments, non_snake_case)]
             fn invoke(&mut self, injector: &mut Injector) -> InjectResult<Svc<R>> {

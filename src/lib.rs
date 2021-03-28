@@ -161,13 +161,13 @@ compile_error!(
 );
 
 mod builder;
-mod dependency;
 mod injector;
+mod request;
 mod services;
 
 pub use builder::*;
-pub use dependency::*;
 pub use injector::*;
+pub use request::*;
 pub use services::*;
 
 #[cfg(test)]
