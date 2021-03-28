@@ -128,6 +128,7 @@
 //!
 //!     // Note that we can register closures as providers as well
 //!     builder.provide((|_: Svc<dyn DataService>| "Hello, world!").singleton());
+//!     builder.provide((|_: Option<Svc<i32>>| 120.9).singleton());
 //!     
 //!     // Let's choose to use the MockDataService as our data service
 //!     builder.implement::<dyn DataService, MockDataService>();
@@ -143,6 +144,7 @@
 //! ```
 
 #![forbid(unsafe_code)]
+#![warn(missing_docs)]
 #![allow(
     clippy::module_name_repetitions,
     clippy::missing_errors_doc,

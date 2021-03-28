@@ -1,13 +1,15 @@
 use crate::{
-    InjectResult, Injector, ProviderFunction, Service, Svc,
-    TypedProvider,
+    InjectResult, Injector, Service, ServiceFactory, Svc, TypedProvider,
 };
 use std::marker::PhantomData;
 
+/// A service provider that only creates a single instance of the service.
+/// The service is created only during its first request. Any subsequent
+/// requests return service pointers to the same service.
 pub struct SingletonProvider<D, R, F>
 where
     R: Service,
-    F: ProviderFunction<D, R>,
+    F: ServiceFactory<D, R>,
 {
     func: F,
     result: Option<Svc<R>>,
@@ -17,8 +19,10 @@ where
 impl<D, R, F> SingletonProvider<D, R, F>
 where
     R: Service,
-    F: ProviderFunction<D, R>,
+    F: ServiceFactory<D, R>,
 {
+    /// Creates a new `SingletonProvider` using a service factory.
+    #[must_use]
     pub fn new(func: F) -> Self {
         SingletonProvider {
             func,
@@ -32,7 +36,7 @@ impl<D, R, F> TypedProvider for SingletonProvider<D, R, F>
 where
     D: 'static,
     R: Service,
-    F: ProviderFunction<D, R>,
+    F: ServiceFactory<D, R>,
 {
     type Result = R;
 
@@ -51,11 +55,11 @@ where
 }
 
 /// Defines a conversion into a singleton provider. This trait is automatically
-/// implemented for all functions which implement `ProviderFunction`.
+/// implemented for all service factories.
 pub trait IntoSingleton<D, R, F>
 where
     R: Service,
-    F: ProviderFunction<D, R>,
+    F: ServiceFactory<D, R>,
 {
     /// Creates a singleton provider. Singleton providers create their values
     /// only once (when first requested) and reuse that value for each future
@@ -78,13 +82,14 @@ where
     ///
     /// assert!(Svc::ptr_eq(&foo1, &foo2));
     /// ```
+    #[must_use]
     fn singleton(self) -> SingletonProvider<D, R, F>;
 }
 
 impl<D, R, F> IntoSingleton<D, R, F> for F
 where
     R: Service,
-    F: ProviderFunction<D, R>,
+    F: ServiceFactory<D, R>,
 {
     fn singleton(self) -> SingletonProvider<D, R, F> {
         SingletonProvider::new(self)
@@ -94,7 +99,7 @@ where
 impl<D, R, F> From<F> for SingletonProvider<D, R, F>
 where
     R: Service,
-    F: ProviderFunction<D, R>,
+    F: ServiceFactory<D, R>,
 {
     fn from(func: F) -> Self {
         func.singleton()

@@ -52,6 +52,7 @@ impl<T: Service> InterfaceFor<T> for T {}
 ///
 /// With the `arc` feature enabled, the trait must be a subtrait of `Send` and
 /// `Sync`. This is necessary to allow the service pointers to be downcasted.
+/// If the `rc` feature is enabled, this is not required.
 ///
 /// # Example
 /// ```

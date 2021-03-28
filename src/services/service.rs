@@ -47,6 +47,7 @@ mod types {
 
 pub use types::*;
 
+/// Type information about a service.
 #[derive(Clone, Copy, PartialEq, Eq, Debug, Hash)]
 pub struct ServiceInfo {
     id: TypeId,
@@ -54,6 +55,7 @@ pub struct ServiceInfo {
 }
 
 impl ServiceInfo {
+    /// Creates a `ServiceInfo` for the given type.
     #[must_use]
     pub fn of<T: ?Sized + Any>() -> Self {
         ServiceInfo {
@@ -62,28 +64,37 @@ impl ServiceInfo {
         }
     }
 
+    /// Gets the `TypeId` for this service.
     #[must_use]
     pub fn id(&self) -> TypeId {
         self.id
     }
 
+    /// Gets the type name of this service.
     #[must_use]
     pub fn name(&self) -> &'static str {
         self.name
     }
 }
 
+/// An error that has occurred during creation of a service.
 #[derive(Debug, Display, Error)]
 #[display(fmt = "an error occurred during injection: {}")]
 pub enum InjectError {
     /// Failed to find a provider for the requested type.
     #[display(fmt = "{} has no provider", "service_info.name()")]
-    MissingProvider { service_info: ServiceInfo },
+    MissingProvider {
+        /// The service that was requested.
+        service_info: ServiceInfo,
+    },
 
     /// A provider for a dependency of the requested service is missing.
     #[display(fmt = "{} is missing a dependency", "service_info.name()")]
     MissingDependency {
+        /// The service that was requested.
         service_info: ServiceInfo,
+
+        /// The dependency that is missing a provider.
         dependency_info: ServiceInfo,
     },
 
@@ -94,7 +105,11 @@ pub enum InjectError {
         "fmt_cycle(cycle)"
     )]
     CycleDetected {
+        /// The service that was requested.
         service_info: ServiceInfo,
+
+        /// The chain of services that were requested during resolution of this
+        /// service.
         cycle: Vec<ServiceInfo>,
     },
 
@@ -105,12 +120,19 @@ pub enum InjectError {
         "service_info.name()"
     )]
     InvalidImplementation {
+        /// The service that was requested.
         service_info: ServiceInfo,
+
+        /// The implementation that was requested for this service.
         implementation: ServiceInfo,
     },
 
+    /// The registered provider returned the wrong service type.
     #[display(fmt = "the registered provider returned the wrong type")]
-    InvalidProvider { service_info: ServiceInfo },
+    InvalidProvider {
+        /// The service that was requested.
+        service_info: ServiceInfo,
+    },
 
     /// An unexpected error has occurred. This is usually caused by a bug in
     /// the library itself.

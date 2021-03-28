@@ -1,7 +1,8 @@
 use crate::{InjectError, InjectResult, Injector, Interface, ServiceInfo, Svc};
 
+/// A request to an injector.
 pub trait Request: Sized {
-    /// Performs the request to the container.
+    /// Performs the request to the injector.
     fn request(injector: &mut Injector) -> InjectResult<Self>;
 }
 
@@ -13,7 +14,7 @@ impl<I: ?Sized + Interface> Request for Svc<I> {
     }
 }
 
-impl<I: ?Sized + Interface> Request for Option<Svc<I>> {
+impl<R: Request> Request for Option<R> {
     fn request(injector: &mut Injector) -> InjectResult<Self> {
         match injector.get() {
             Ok(response) => Ok(Some(response)),
