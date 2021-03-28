@@ -61,13 +61,19 @@ pub trait TypedProvider: Provider {
 
     /// Provides an instance of the service. The `Injector` passed in can be
     /// used to retrieve instances of any dependencies this service has.
-    fn provide_typed(&mut self, injector: &mut Injector) -> InjectResult<Svc<Self::Result>>;
+    fn provide_typed(
+        &mut self,
+        injector: &mut Injector,
+    ) -> InjectResult<Svc<Self::Result>>;
 }
 
 impl<R: Service> TypedProvider for Box<dyn TypedProvider<Result = R>> {
     type Result = R;
 
-    fn provide_typed(&mut self, injector: &mut Injector) -> InjectResult<Svc<Self::Result>> {
+    fn provide_typed(
+        &mut self,
+        injector: &mut Injector,
+    ) -> InjectResult<Svc<Self::Result>> {
         self.as_mut().provide_typed(injector)
     }
 }

@@ -1,0 +1,37 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  test:
+    name: Rust ${{ matrix.rust_version }} (${{ matrix.features }})
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        rust_version: [stable, beta, nightly]
+        features: [rc, arc]
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v2
+    - name: Setup toolchain
+      uses: dtolnay/rust-toolchain@stable
+      with:
+        toolchain: ${{ matrix.rust_version }}
+    - name: Run tests
+      run: cargo test --verbose --no-default-features --features ${{ matrix.features }}
+
+  clippy:
+    name: Clippy
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: dtolnay/rust-toolchain@clippy
+      - run: cargo clippy --tests -- -D clippy::all -D clippy::pedantic

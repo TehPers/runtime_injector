@@ -30,12 +30,12 @@ macro_rules! impl_provider_function {
                     match injector.get::<$type_name>() {
                         Ok(dependency) => dependency,
                         Err($crate::InjectError::MissingProvider { service_info }) => {
-                            Err($crate::InjectError::MissingDependency {
+                            return Err($crate::InjectError::MissingDependency {
                                 dependency_info: service_info,
                                 service_info: $crate::ServiceInfo::of::<R>(),
-                            })?
+                            })
                         },
-                        err @ Err(_) => err?,
+                        Err(error) => return Err(error),
                     }
                 ),*);
                 Ok(Svc::new(result))
