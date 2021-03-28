@@ -6,9 +6,13 @@ edition = "2018"
 license = "MIT OR Apache-2.0"
 description = "Runtime dependency injection container"
 repository = "https://github.com/TehPers/runtime_injector"
-# documentation = "https://docs.rs/runtime_injector"
-categories = []
+documentation = "https://docs.rs/runtime_injector"
+keywords = ["dependency-injection", "di", "ioc"]
 readme = "README.md"
+exclude = [
+    ".github/*",
+    ".vscode/*",
+]
 
 [features]
 default = ["rc"]
