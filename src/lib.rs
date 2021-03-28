@@ -6,11 +6,10 @@
 //! features and enabling the "arc" feature:
 //!
 //! ```text
-//! runtime_injector = {
-//!     version = "*",
-//!     default_features = false,
-//!     features = ["arc"]
-//! }
+//! [dependencies.runtime_injector]
+//! version = "*"
+//! default-features = false
+//! features = ["arc"]
 //! ```
 //!
 //! # Runtime dependency injection (rather than compile-time)
