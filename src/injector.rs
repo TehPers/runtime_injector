@@ -4,12 +4,69 @@ use crate::{
 };
 use std::collections::HashMap;
 
+type ProviderMap = HashMap<ServiceInfo, Option<Box<dyn Provider>>>;
+type ImplementationMap = HashMap<ServiceInfo, ServiceInfo>;
+
+trait MapContainerEx<T> {
+    fn new(value: T) -> Self;
+    fn with_inner<R, F: FnOnce(&T) -> R>(&self, f: F) -> R;
+    fn with_inner_mut<R, F: FnOnce(&mut T) -> R>(&self, f: F) -> R;
+}
+
+#[cfg(feature = "rc")]
+mod types {
+    use super::MapContainerEx;
+    use std::{cell::RefCell, rc::Rc};
+
+    pub type MapContainer<T> = Rc<RefCell<T>>;
+
+    impl<T> MapContainerEx<T> for MapContainer<T> {
+        fn new(value: T) -> Self {
+            Rc::new(RefCell::new(value))
+        }
+
+        fn with_inner<R, F: FnOnce(&T) -> R>(&self, f: F) -> R {
+            f(&*self.borrow())
+        }
+
+        fn with_inner_mut<R, F: FnOnce(&mut T) -> R>(&self, f: F) -> R {
+            f(&mut *self.borrow_mut())
+        }
+    }
+}
+
+#[cfg(feature = "arc")]
+mod types {
+    use super::MapContainerEx;
+    use std::sync::{Arc, Mutex};
+
+    pub type MapContainer<T> = Arc<Mutex<T>>;
+
+    impl<T> MapContainerEx<T> for MapContainer<T> {
+        fn new(value: T) -> Self {
+            Arc::new(Mutex::new(value))
+        }
+
+        fn with_inner<R, F: FnOnce(&T) -> R>(&self, f: F) -> R {
+            f(&*self.lock().unwrap())
+        }
+
+        fn with_inner_mut<R, F: FnOnce(&mut T) -> R>(&self, f: F) -> R {
+            f(&mut *self.lock().unwrap())
+        }
+    }
+}
+
+#[allow(clippy::wildcard_imports)]
+use types::*;
+
 /// A runtime dependency injection container. This holds all the bindings
 /// between service types and their providers, as well as all the mappings from
 /// interfaces to their implementations (if they differ).
+#[derive(Clone)]
 pub struct Injector {
-    providers: HashMap<ServiceInfo, Option<Box<dyn Provider>>>,
-    implementations: HashMap<ServiceInfo, ServiceInfo>,
+    providers: MapContainer<ProviderMap>,
+    implementations: MapContainer<ImplementationMap>,
 }
 
 impl Injector {
@@ -24,26 +81,14 @@ impl Injector {
     /// Prefer `Injector::builder()` for creating new injectors instead.
     #[must_use]
     pub fn new(
-        providers: HashMap<ServiceInfo, Option<Box<dyn Provider>>>,
-        implementations: HashMap<ServiceInfo, ServiceInfo>,
+        providers: ProviderMap,
+        implementations: ImplementationMap,
     ) -> Self {
         Injector {
-            providers,
-            implementations,
+            providers: MapContainerEx::new(providers),
+            implementations: MapContainerEx::new(implementations),
         }
     }
-
-    // /// Gets an implementation of the given type. If the type is a sized type,
-    // /// then this will attempt to activate an instance of that type using a
-    // /// registered provider. If the type is a dynamic type (`dyn Trait`), then
-    // /// an instance of the type registered as the implementation of that trait will
-    // /// be activated instead.
-    // pub fn get<T: ?Sized + Interface>(&mut self) -> InjectResult<Svc<T>> {
-    //     T::resolve(
-    //         self,
-    //         self.implementations.get(&ServiceInfo::of::<T>()).copied(),
-    //     )
-    // }
 
     /// Performs a request for a service. There are several types of requests
     /// that can be made to the service container by default:
@@ -112,7 +157,11 @@ impl Injector {
         &mut self,
         interface: ServiceInfo,
     ) -> Option<ServiceInfo> {
-        self.implementations.get(&interface).copied()
+        // TODO: not clone every time here, maybe get rid of this function
+        // entirely
+        self.implementations.with_inner(|implementations| {
+            implementations.get(&interface).copied()
+        })
     }
 
     /// Gets an instance of the service with exactly the type that was
@@ -133,16 +182,16 @@ impl Injector {
         &mut self,
         service_info: ServiceInfo,
     ) -> InjectResult<DynSvc> {
-        let provider = self
-            .providers
-            .get_mut(&service_info)
-            .ok_or(InjectError::MissingProvider { service_info })?;
-
-        let mut provider =
-            provider.take().ok_or(InjectError::CycleDetected {
-                service_info,
-                cycle: vec![service_info],
-            })?;
+        let mut provider = self.providers.with_inner_mut(|providers| {
+            providers
+                .get_mut(&service_info)
+                .ok_or(InjectError::MissingProvider { service_info })?
+                .take()
+                .ok_or(InjectError::CycleDetected {
+                    service_info,
+                    cycle: vec![service_info],
+                })
+        })?;
 
         let result = match provider.provide(self) {
             Ok(result) => result,
@@ -157,21 +206,24 @@ impl Injector {
         };
 
         // Need to get the entry again since it could have been removed by a provider (it shouldn't have though)
-        let provider_entry =
-            self.providers.get_mut(&service_info).ok_or_else(|| {
-                InjectError::InternalError(format!(
-                    "activated provider for {} is no longer registered",
-                    service_info.name()
-                ))
-            })?;
-        if provider_entry.replace(provider).is_some() {
-            return Err(InjectError::InternalError(format!(
-                "another provider for {} was added during its activation",
-                service_info.name()
-            )));
-        }
+        self.providers.with_inner_mut(move |providers| {
+            let provider_entry =
+                providers.get_mut(&service_info).ok_or_else(|| {
+                    InjectError::InternalError(format!(
+                        "activated provider for {} is no longer registered",
+                        service_info.name()
+                    ))
+                })?;
 
-        Ok(result)
+            if provider_entry.replace(provider).is_some() {
+                Err(InjectError::InternalError(format!(
+                    "another provider for {} was added during its activation",
+                    service_info.name()
+                )))
+            } else {
+                Ok(result)
+            }
+        })
     }
 }
 
