@@ -69,8 +69,8 @@ use types::*;
 /// Cloning the injector does not clone the providers inside of it. Instead,
 /// both injectors will use the same providers, meaning that an injector can be
 /// passed to a service as a dependency. The injector can be requested as
-/// itself without using a service pointer without needing to register it as a
-/// dependency in the builder.
+/// itself without using a service pointer. It does not need to be registered
+/// as a dependency in the builder beforehand.
 ///
 /// Note that requesting the injector inside of your services is generally bad
 /// practice, and is known as the service locator antipattern. This is mostly
