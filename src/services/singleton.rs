@@ -36,13 +36,13 @@ impl<D, R, F> TypedProvider for SingletonProvider<D, R, F>
 where
     D: 'static,
     R: Service,
-    F: ServiceFactory<D, R>,
+    F: ServiceFactory<D, R> + Service,
 {
     type Result = R;
 
     fn provide_typed(
         &mut self,
-        injector: &mut Injector,
+        injector: &Injector,
     ) -> InjectResult<Svc<Self::Result>> {
         if let Some(ref service) = self.result {
             return Ok(service.clone());
@@ -76,7 +76,7 @@ where
     /// let mut builder = Injector::builder();
     /// builder.provide(Foo::default.singleton());
     ///
-    /// let mut injector = builder.build();
+    /// let injector = builder.build();
     /// let foo1: Svc<Foo> = injector.get().unwrap();
     /// let foo2: Svc<Foo> = injector.get().unwrap();
     ///

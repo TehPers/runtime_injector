@@ -12,8 +12,8 @@ use crate::{InjectResult, Injector, Request, Service, Svc};
 ///
 /// # fn _no_run() {
 /// fn factory(foo: Svc<Foo>) -> Bar { todo!() }
-/// let mut injector: Injector = todo!();
-/// factory.invoke(&mut injector);
+/// let injector: Injector = todo!();
+/// factory.invoke(&injector);
 /// # }
 /// ```
 ///
@@ -25,7 +25,7 @@ where
     R: Service,
 {
     /// Invokes this service factory, creating an instance of the service.
-    fn invoke(&mut self, injector: &mut Injector) -> InjectResult<Svc<R>>;
+    fn invoke(&mut self, injector: &Injector) -> InjectResult<Svc<R>>;
 }
 
 macro_rules! impl_provider_function {
@@ -45,7 +45,7 @@ macro_rules! impl_provider_function {
             $($type_name: Request,)*
         {
             #[allow(unused_variables, unused_mut, unused_assignments, non_snake_case)]
-            fn invoke(&mut self, injector: &mut Injector) -> InjectResult<Svc<R>> {
+            fn invoke(&mut self, injector: &Injector) -> InjectResult<Svc<R>> {
                 let result = self($(
                     match injector.get::<$type_name>() {
                         Ok(dependency) => dependency,
