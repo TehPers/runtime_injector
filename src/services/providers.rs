@@ -1,4 +1,7 @@
-use crate::{DynSvc, InjectResult, Injector, Service, ServiceInfo, Svc};
+use crate::{
+    DynSvc, InjectError, InjectResult, Injector, MapContainer, MapContainerEx,
+    ProviderMap, Service, ServiceInfo, Svc,
+};
 
 /// Weakly typed service provider. Given an injector, this will provide an
 /// implementation of a service. This is automatically implemented for all
@@ -65,4 +68,24 @@ pub trait TypedProvider: Provider {
         &mut self,
         injector: &Injector,
     ) -> InjectResult<Svc<Self::Result>>;
+}
+
+pub struct ServiceIter<'a> {
+    providers: &'a mut Vec<Box<dyn Provider>>,
+    injector: &'a Injector,
+    index: usize,
+}
+
+impl<'a> Iterator for ServiceIter<'a> {
+    type Item = InjectResult<DynSvc>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        match self.providers.get_mut(self.index) {
+            Some(provider) => {
+                self.index += 1;
+                Some(provider.provide(self.injector))
+            }
+            None => None,
+        }
+    }
 }

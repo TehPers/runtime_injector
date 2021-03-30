@@ -182,10 +182,7 @@ fn interfaces() {
 
     // Svc1
     let mut builder = Injector::builder();
-    builder.provide(Svc1::default.transient());
-    builder.provide(Svc2::new.transient());
-    builder.implement::<dyn Foo, Svc1>();
-    builder.provide(Svc4::new.transient());
+    builder.provide_as::<dyn Foo, _>(Svc1::default.transient());
 
     let injector = builder.build();
     let svc: Svc<dyn Foo> = injector.get().unwrap();
@@ -195,13 +192,23 @@ fn interfaces() {
     // Svc2
     let mut builder = Injector::builder();
     builder.provide(Svc1::default.transient());
-    builder.provide(Svc2::new.transient());
-    builder.implement::<dyn Foo, Svc2>();
+    builder.provide_as::<dyn Foo, _>(Svc2::new.transient());
 
     let injector = builder.build();
     let svc: Svc<dyn Foo> = injector.get().unwrap();
 
     assert_eq!(5, svc.bar());
+
+    // Svc4
+    let mut builder = Injector::builder();
+    builder.provide(Svc1::default.transient());
+    builder.provide_as::<dyn Foo, _>(Svc2::new.transient());
+    builder.provide(Svc4::new.transient());
+
+    let injector = builder.build();
+    let svc: Svc<Svc4> = injector.get().unwrap();
+
+    assert_eq!(5, svc.foo.bar());
 }
 
 #[test]
@@ -214,8 +221,7 @@ fn a() {
     impl Foo for Bar {}
 
     let mut builder = Injector::builder();
-    builder.provide(Bar::default.singleton());
-    builder.implement::<dyn Foo, Bar>();
+    builder.provide_as::<dyn Foo, _>(Bar::default.singleton());
 
     let injector = builder.build();
     let _bar: Svc<dyn Foo> = injector.get().unwrap();

@@ -162,11 +162,13 @@ compile_error!(
 
 mod builder;
 mod injector;
+mod iter;
 mod request;
 mod services;
 
 pub use builder::*;
 pub use injector::*;
+pub use iter::*;
 pub use request::*;
 pub use services::*;
 
