@@ -7,7 +7,7 @@
 //!
 //! ```text
 //! [dependencies.runtime_injector]
-//! version = "*"
+//! version = "*" # Replace with the version you want to use
 //! default-features = false
 //! features = ["arc"]
 //! ```
