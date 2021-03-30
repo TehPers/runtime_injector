@@ -9,12 +9,20 @@ Sample code is available on the [docs].
 
 ## Getting started
 
-Clone the repository, then build the project with cargo:
+For using the library, check out the [docs].
+
+For local development of runtime_injector, clone the repository, then build the project with cargo:
 
 ```bash
 git clone https://github.com/TehPers/runtime_injector
 cd runtime_injector
 cargo build
+```
+
+If you want to build the project using the "arc" feature instead, disable default features, and enable the "arc" feature:
+
+```bash
+cargo build --no-default-features --features arc
 ```
 
 ## Minimum supported Rust version
