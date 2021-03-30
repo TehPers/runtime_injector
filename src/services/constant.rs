@@ -31,7 +31,7 @@ where
 
     fn provide_typed(
         &mut self,
-        _injector: &mut Injector,
+        _injector: &Injector,
     ) -> InjectResult<Svc<Self::Result>> {
         Ok(self.result.clone())
     }
@@ -57,7 +57,7 @@ impl<T: Service> From<T> for ConstantProvider<T> {
 /// let mut builder = Injector::builder();
 /// builder.provide(constant(8i32));
 ///
-/// let mut injector = builder.build();
+/// let injector = builder.build();
 /// let value: Svc<i32> = injector.get().unwrap();
 ///
 /// assert_eq!(8, *value);
@@ -87,7 +87,7 @@ impl<T: Service> From<T> for ConstantProvider<T> {
 /// builder.provide(Foo::new.transient());
 /// builder.provide(constant(Mutex::new(0i32)));
 ///
-/// let mut injector = builder.build();
+/// let injector = builder.build();
 /// let foo: Svc<Foo> = injector.get().unwrap();
 /// let value: Svc<Mutex<i32>> = injector.get().unwrap();
 ///

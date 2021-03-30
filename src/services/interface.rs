@@ -14,14 +14,14 @@ pub trait Interface: Service {
     /// However, it is not unsound to return the wrong type. It is only unsafe
     /// for code to rely on that exact type being returned in an unsafe manner.
     fn resolve(
-        injector: &mut Injector,
+        injector: &Injector,
         implementation: Option<ServiceInfo>,
     ) -> InjectResult<Svc<Self>>;
 }
 
 impl<T: Service> Interface for T {
     fn resolve(
-        injector: &mut Injector,
+        injector: &Injector,
         implementation: Option<ServiceInfo>,
     ) -> InjectResult<Svc<Self>> {
         if let Some(implementation) = implementation {
@@ -82,7 +82,7 @@ macro_rules! interface {
     ($trait:tt = [$($(#[$attr:meta])* $impl:ty),* $(,)?]) => {
         impl $crate::Interface for dyn $trait {
             fn resolve(
-                injector: &mut $crate::Injector,
+                injector: &$crate::Injector,
                 implementation: Option<$crate::ServiceInfo>,
             ) -> $crate::InjectResult<$crate::Svc<Self>> {
                 match implementation {

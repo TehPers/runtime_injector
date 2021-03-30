@@ -1,6 +1,6 @@
 use crate::{
-    DynSvc, InjectError, InjectResult, InjectorBuilder, Provider, Request,
-    Service, ServiceInfo, Svc,
+    constant, DynSvc, InjectError, InjectResult, InjectorBuilder, Provider,
+    Request, Service, ServiceInfo, Svc,
 };
 use std::collections::HashMap;
 
@@ -63,6 +63,56 @@ use types::*;
 /// A runtime dependency injection container. This holds all the bindings
 /// between service types and their providers, as well as all the mappings from
 /// interfaces to their implementations (if they differ).
+///
+/// # Injecting the injector
+///
+/// Cloning the injector does not clone the providers inside of it. Instead,
+/// both injectors will use the same providers, meaning that an injector can be
+/// passed to a service as a dependency. The injector can be requested as
+/// itself without using a service pointer without needing to register it as a
+/// dependency in the builder.
+///
+/// Note that requesting the injector inside of your services is generally bad
+/// practice, and is known as the service locator antipattern. This is mostly
+/// useful for service factories where you can create instances of your
+/// services on demand.
+///
+/// ```
+/// use runtime_injector::{Injector, Svc, IntoTransient, IntoSingleton, constant, InjectResult};
+/// use std::sync::Mutex;
+///
+/// struct FloatFactory(Injector);
+///
+/// impl FloatFactory {
+///     pub fn new(injector: Injector) -> Self {
+///         FloatFactory(injector)
+///     }
+///
+///     pub fn get(&self) -> InjectResult<f32> {
+///         let int: Svc<i32> = self.0.get()?;
+///         Ok(*int as f32)
+///     }
+/// }
+///
+/// fn count(counter: Svc<Mutex<i32>>) -> i32 {
+///     let mut counter = counter.lock().unwrap();
+///     *counter += 1;
+///     *counter
+/// }
+///
+/// let mut builder = Injector::builder();
+/// builder.provide(constant(Mutex::new(0i32)));
+/// builder.provide(count.transient());
+/// builder.provide(FloatFactory::new.singleton());
+///
+/// let injector = builder.build();
+/// let float_factory: Svc<FloatFactory> = injector.get().unwrap();
+/// let value1 = float_factory.get().unwrap();
+/// let value2 = float_factory.get().unwrap();
+///
+/// assert_eq!(1.0, value1);
+/// assert_eq!(2.0, value2);
+/// ```
 #[derive(Clone)]
 pub struct Injector {
     providers: MapContainer<ProviderMap>,
@@ -84,10 +134,19 @@ impl Injector {
         providers: ProviderMap,
         implementations: ImplementationMap,
     ) -> Self {
-        Injector {
+        let injector = Injector {
             providers: MapContainerEx::new(providers),
             implementations: MapContainerEx::new(implementations),
-        }
+        };
+
+        // Insert the injector as a service if there isn't an injector already.
+        injector.providers.with_inner_mut(|providers| {
+            providers
+                .entry(ServiceInfo::of::<Injector>())
+                .or_insert_with(|| Some(Box::new(constant(injector.clone()))));
+        });
+
+        injector
     }
 
     /// Performs a request for a service. There are several types of requests
@@ -116,7 +175,7 @@ impl Injector {
     /// let mut builder = Injector::builder();
     /// builder.provide(Bar::default.singleton());
     ///
-    /// let mut injector = builder.build();
+    /// let injector = builder.build();
     /// let _bar: Svc<Bar> = injector.get().unwrap();
     /// ```
     ///
@@ -140,12 +199,12 @@ impl Injector {
     /// builder.provide(Bar::default.singleton());
     /// builder.implement::<dyn Foo, Bar>();
     ///
-    /// let mut injector = builder.build();
+    /// let injector = builder.build();
     /// let _bar: Svc<dyn Foo> = injector.get().unwrap();
     /// ```
     ///
     /// Custom request types can also be used by implementing `Request`.
-    pub fn get<R: Request>(&mut self) -> InjectResult<R> {
+    pub fn get<R: Request>(&self) -> InjectResult<R> {
         R::request(self)
     }
 
@@ -153,8 +212,9 @@ impl Injector {
     /// interface. This is only used by `dyn Trait` interface types to request
     /// the registered implementation of that trait. For sized service types,
     /// the implementation is always the type itself.
+    #[must_use]
     pub fn get_implementation(
-        &mut self,
+        &self,
         interface: ServiceInfo,
     ) -> Option<ServiceInfo> {
         // TODO: not clone every time here, maybe get rid of this function
@@ -169,7 +229,7 @@ impl Injector {
     /// implementation of a particular trait. In fact, dynamic types (`dyn
     /// Trait`) cannot be used with this function.
     #[allow(clippy::clippy::map_err_ignore)]
-    pub fn get_exact<T: Service>(&mut self) -> InjectResult<Svc<T>> {
+    pub fn get_exact<T: Service>(&self) -> InjectResult<Svc<T>> {
         let service_info = ServiceInfo::of::<T>();
         self.get_dyn_exact(service_info)?
             .downcast()
@@ -179,9 +239,11 @@ impl Injector {
     /// Similar to `get_exact`, but returns an instance of `dyn Any` instead,
     /// and does not need the type passed in via a type parameter.
     pub fn get_dyn_exact(
-        &mut self,
+        &self,
         service_info: ServiceInfo,
     ) -> InjectResult<DynSvc> {
+        // Extract the provider for the requested type so that the lock can be
+        // freed before requesting the service (since it's recursive)
         let mut provider = self.providers.with_inner_mut(|providers| {
             providers
                 .get_mut(&service_info)
@@ -193,6 +255,7 @@ impl Injector {
                 })
         })?;
 
+        // Request the service from the provider now that the lock is freed
         let result = match provider.provide(self) {
             Ok(result) => result,
             Err(InjectError::CycleDetected { mut cycle, .. }) => {
@@ -205,7 +268,7 @@ impl Injector {
             Err(e) => return Err(e),
         };
 
-        // Need to get the entry again since it could have been removed by a provider (it shouldn't have though)
+        // Reinsert the provider back into the map so it can be reused
         self.providers.with_inner_mut(move |providers| {
             let provider_entry =
                 providers.get_mut(&service_info).ok_or_else(|| {
@@ -245,7 +308,7 @@ mod tests {
 
             fn provide(
                 &mut self,
-                _injector: &mut Injector,
+                _injector: &Injector,
             ) -> InjectResult<DynSvc> {
                 Ok(Svc::new(1.2_f32))
             }
@@ -254,7 +317,7 @@ mod tests {
         let mut builder = Injector::builder();
         builder.provide(BadProvider);
 
-        let mut injector = builder.build();
+        let injector = builder.build();
         let bad: InjectResult<Svc<i32>> = injector.get();
 
         match bad {

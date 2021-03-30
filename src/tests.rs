@@ -35,13 +35,13 @@ fn can_make_svc1() {
     let mut builder = Injector::builder();
     builder.provide(Svc1::default.transient());
 
-    let mut injector = builder.build();
+    let injector = builder.build();
     let _service: Svc<Svc1> = injector.get().unwrap();
 }
 
 #[test]
 fn cant_make_svc1_when_no_provider() {
-    let mut injector = Injector::builder().build();
+    let injector = Injector::builder().build();
     let svc: InjectResult<Svc<Svc1>> = injector.get();
     match svc {
         Err(InjectError::MissingProvider { service_info })
@@ -64,7 +64,7 @@ fn can_make_svc3() {
     builder.provide(Svc2::new.transient());
     builder.provide(Svc3::new.transient());
 
-    let mut injector = builder.build();
+    let injector = builder.build();
     let _service: Svc<Svc3> = injector.get().unwrap();
 }
 
@@ -74,7 +74,7 @@ fn cant_make_svc3_when_no_provider_for_dependency() {
     builder.provide(Svc2::new.transient());
     builder.provide(Svc3::new.transient());
 
-    let mut injector = builder.build();
+    let injector = builder.build();
     match injector.get::<Svc<Svc3>>() {
         Err(InjectError::MissingDependency {
             dependency_info, ..
@@ -100,7 +100,7 @@ fn singleton() {
     builder.provide(Svc2::new.transient());
     builder.provide(Svc3::new.transient());
 
-    let mut injector = builder.build();
+    let injector = builder.build();
     let svc1: Svc<Svc1> = injector.get().unwrap();
     let svc2: Svc<Svc2> = injector.get().unwrap();
     let svc3: Svc<Svc3> = injector.get().unwrap();
@@ -126,7 +126,7 @@ fn constants() {
     builder.provide(Svc2::new.transient());
     builder.provide(Svc3::new.transient());
 
-    let mut injector = builder.build();
+    let injector = builder.build();
     let svc1: Svc<Svc1> = injector.get().unwrap();
     let svc2: Svc<Svc2> = injector.get().unwrap();
     let svc3: Svc<Svc3> = injector.get().unwrap();
@@ -187,7 +187,7 @@ fn interfaces() {
     builder.implement::<dyn Foo, Svc1>();
     builder.provide(Svc4::new.transient());
 
-    let mut injector = builder.build();
+    let injector = builder.build();
     let svc: Svc<dyn Foo> = injector.get().unwrap();
 
     assert_eq!(4, svc.bar());
@@ -198,7 +198,7 @@ fn interfaces() {
     builder.provide(Svc2::new.transient());
     builder.implement::<dyn Foo, Svc2>();
 
-    let mut injector = builder.build();
+    let injector = builder.build();
     let svc: Svc<dyn Foo> = injector.get().unwrap();
 
     assert_eq!(5, svc.bar());
@@ -217,6 +217,6 @@ fn a() {
     builder.provide(Bar::default.singleton());
     builder.implement::<dyn Foo, Bar>();
 
-    let mut injector = builder.build();
+    let injector = builder.build();
     let _bar: Svc<dyn Foo> = injector.get().unwrap();
 }

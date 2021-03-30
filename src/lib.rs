@@ -134,7 +134,7 @@
 //!     
 //!     // Now that we've registered all our providers and implementations, we
 //!     // can start relying on our container to create our services for us!
-//!     let mut injector = builder.build();
+//!     let injector = builder.build();
 //!     let user_service: Svc<UserService> = injector.get()?;
 //!     let _user = user_service.get_user("john");
 //!     

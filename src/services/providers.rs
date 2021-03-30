@@ -4,12 +4,12 @@ use crate::{DynSvc, InjectResult, Injector, Service, ServiceInfo, Svc};
 /// implementation of a service. This is automatically implemented for all
 /// types that implement `TypedProvider`, and `TypedProvider` should be
 /// preferred if possible to allow for stronger type checking.
-pub trait Provider: 'static {
+pub trait Provider: Service {
     /// The `ServiceInfo` which describes the type returned by this provider.
     fn result(&self) -> ServiceInfo;
 
     /// Provides an instance of the service.
-    fn provide(&mut self, injector: &mut Injector) -> InjectResult<DynSvc>;
+    fn provide(&mut self, injector: &Injector) -> InjectResult<DynSvc>;
 }
 
 impl<T> Provider for T
@@ -20,7 +20,7 @@ where
         ServiceInfo::of::<T::Result>()
     }
 
-    fn provide(&mut self, injector: &mut Injector) -> InjectResult<DynSvc> {
+    fn provide(&mut self, injector: &Injector) -> InjectResult<DynSvc> {
         let result = self.provide_typed(injector)?;
         Ok(result as DynSvc)
     }
@@ -44,7 +44,7 @@ where
 /// impl TypedProvider for FooProvider {
 ///     type Result = Foo;
 ///
-///     fn provide_typed(&mut self, _injector: &mut Injector) -> InjectResult<Svc<Self::Result>> {
+///     fn provide_typed(&mut self, _injector: &Injector) -> InjectResult<Svc<Self::Result>> {
 ///         Ok(Svc::new(Foo))
 ///     }
 /// }
@@ -52,7 +52,7 @@ where
 /// let mut builder = Injector::builder();
 /// builder.provide(FooProvider);
 ///
-/// let mut injector = builder.build();
+/// let injector = builder.build();
 /// let _foo: Svc<Foo> = injector.get().unwrap();
 /// ```
 pub trait TypedProvider: Provider {
@@ -63,6 +63,6 @@ pub trait TypedProvider: Provider {
     /// used to retrieve instances of any dependencies this service has.
     fn provide_typed(
         &mut self,
-        injector: &mut Injector,
+        injector: &Injector,
     ) -> InjectResult<Svc<Self::Result>>;
 }
