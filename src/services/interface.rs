@@ -6,7 +6,7 @@ use crate::{DynSvc, InjectError, InjectResult, Service, ServiceInfo, Svc};
 /// However, the injector cannot provide exact implementations for dynamic
 /// types (`dyn Trait`). For this reason, any interfaces using traits must be
 /// declared explicitly before use. This trait should usually be implemented
-/// by the `interface!` macro.
+/// by the [`interface!`] macro.
 pub trait Interface: Service {
     /// Downcasts a dynamic service pointer into a service pointer of this
     /// interface type.
@@ -27,7 +27,7 @@ impl<T: Service> Interface for T {
 /// Marker trait that indicates that a type is an interface for another type.
 /// Each sized type is an interface for itself, and each `dyn Trait` is an
 /// interface for the types that it can resolve. This trait should usually be
-/// implemented by the `interface!` macro, and is strictly used to enforce
+/// implemented by the [`interface!`] macro, and is strictly used to enforce
 /// stronger type checking when assigning implementations for interfaces.
 pub trait InterfaceFor<T: Service>: Interface {}
 impl<T: Service> InterfaceFor<T> for T {}
@@ -36,9 +36,9 @@ impl<T: Service> InterfaceFor<T> for T {}
 /// a request for the given trait can resolve to any of the types indicated by
 /// this macro invocation.
 ///
-/// With the `arc` feature enabled, the trait must be a subtrait of `Send` and
+/// With the "arc" feature enabled, the trait must be a subtrait of `Send` and
 /// `Sync`. This is necessary to allow the service pointers to be downcasted.
-/// If the `rc` feature is enabled, this is not required.
+/// If the "rc" feature is enabled, this is not required.
 ///
 /// # Example
 /// ```

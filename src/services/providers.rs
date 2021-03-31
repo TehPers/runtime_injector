@@ -7,7 +7,7 @@ use crate::{
 
 /// Weakly typed service provider. Given an injector, this will provide an
 /// implementation of a service. This is automatically implemented for all
-/// types that implement `TypedProvider`, and `TypedProvider` should be
+/// types that implement [`TypedProvider`], and [`TypedProvider`] should be
 /// preferred if possible to allow for stronger type checking.
 pub trait Provider: Service {
     /// The `ServiceInfo` which describes the type returned by this provider.
@@ -34,9 +34,9 @@ where
 /// A strongly-typed service provider. Types which implement this provide
 /// instances of a service type when requested. Examples of typed providers
 /// include providers created from service factories or constant providers.
-/// This should be preferred over `Provider` for custom service providers if
-/// possible due to the strong type guarantees this provides. `Provider` is
-/// automatically implemented for all types which implement `TypedProvider`.
+/// This should be preferred over [`Provider`] for custom service providers if
+/// possible due to the strong type guarantees this provides. [`Provider`] is
+/// automatically implemented for all types which implement [`TypedProvider`].
 ///
 /// # Example
 ///
