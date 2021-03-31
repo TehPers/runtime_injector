@@ -9,15 +9,14 @@ repository = "https://github.com/TehPers/runtime_injector"
 documentation = "https://docs.rs/runtime_injector"
 keywords = ["dependency-injection", "di", "ioc"]
 readme = "README.md"
-exclude = [
-    ".github/*",
-    ".vscode/*",
-]
+exclude = [".github/*", ".vscode/*"]
 
 [features]
 default = ["rc"]
 arc = [] # Svc<T> = Arc<T>
 rc = [] # Svc<T> = Rc<T>
 
-[dependencies]
-derive_more = "0.99"
+[dependencies.derive_more]
+version = "0.99"
+default-features = false
+features = ["display", "error"]
