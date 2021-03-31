@@ -236,3 +236,39 @@ fn multi_injection() {
         foos.get_all().collect::<InjectResult<_>>().unwrap();
     assert_eq!(1, foos.len());
 }
+
+#[test]
+fn injector_returns_error_on_cycles() {
+    struct Foo(Svc<Bar>);
+    impl Foo {
+        fn new(bar: Svc<Bar>) -> Self {
+            Foo(bar)
+        }
+    }
+
+    struct Bar(Svc<Foo>);
+    impl Bar {
+        fn new(foo: Svc<Foo>) -> Self {
+            Bar(foo)
+        }
+    }
+
+    let mut builder = Injector::builder();
+    builder.provide(Foo::new.singleton());
+    builder.provide(Bar::new.singleton());
+
+    let injector = builder.build();
+    match injector.get::<Svc<Foo>>() {
+        Err(InjectError::CycleDetected {
+            service_info,
+            cycle,
+        }) if service_info == ServiceInfo::of::<Foo>() => {
+            assert_eq!(3, cycle.len());
+            assert_eq!(ServiceInfo::of::<Foo>(), cycle[0]);
+            assert_eq!(ServiceInfo::of::<Bar>(), cycle[1]);
+            assert_eq!(ServiceInfo::of::<Foo>(), cycle[2]);
+        }
+        Ok(_) => panic!("somehow created a Foo with a cyclic dependency"),
+        Err(error) => Err(error).unwrap(),
+    }
+}

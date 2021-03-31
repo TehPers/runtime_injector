@@ -172,11 +172,20 @@ impl<'a, I: ?Sized + Interface> Iterator for ServicesIter<'a, I> {
             None => None,
             Some(provider) => {
                 self.index += 1;
-                Some(
-                    provider
-                        .provide(self.injector)
-                        .and_then(|result| I::downcast(result)),
-                )
+                let result = match provider.provide(self.injector) {
+                    Ok(result) => I::downcast(result),
+                    Err(InjectError::CycleDetected { mut cycle, .. }) => {
+                        let service_info = ServiceInfo::of::<I>();
+                        cycle.push(service_info);
+                        Err(InjectError::CycleDetected {
+                            service_info,
+                            cycle,
+                        })
+                    }
+                    Err(error) => Err(error),
+                };
+
+                Some(result)
             }
         }
     }
