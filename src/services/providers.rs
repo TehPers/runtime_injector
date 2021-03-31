@@ -1,4 +1,9 @@
-use crate::{DynSvc, InjectResult, Injector, Service, ServiceInfo, Svc};
+use std::marker::PhantomData;
+
+use crate::{
+    DynSvc, InjectResult, Injector, Interface, InterfaceFor, Service,
+    ServiceInfo, Svc,
+};
 
 /// Weakly typed service provider. Given an injector, this will provide an
 /// implementation of a service. This is automatically implemented for all
@@ -55,9 +60,9 @@ where
 /// let injector = builder.build();
 /// let _foo: Svc<Foo> = injector.get().unwrap();
 /// ```
-pub trait TypedProvider: Provider {
+pub trait TypedProvider: Sized + Provider {
     /// The type of service this provider can activate.
-    type Result: Service;
+    type Result: Interface;
 
     /// Provides an instance of the service. The `Injector` passed in can be
     /// used to retrieve instances of any dependencies this service has.
@@ -65,4 +70,67 @@ pub trait TypedProvider: Provider {
         &mut self,
         injector: &Injector,
     ) -> InjectResult<Svc<Self::Result>>;
+
+    /// Provides this service as an implementation of a particular interface.
+    /// Rather than requesting this service with its concrete type, it can
+    /// instead be requested by its interface type.
+    ///
+    /// ```
+    /// use runtime_injector::{TypedProvider, Injector, IntoSingleton, InjectResult, Svc, interface};
+    ///
+    /// trait Fooable: Send + Sync {
+    ///     fn bar(&self) {}
+    /// }
+    ///
+    /// interface!(Fooable = [Foo]);
+    ///
+    /// #[derive(Default)]
+    /// struct Foo;
+    /// impl Fooable for Foo {}
+    ///
+    /// let mut builder = Injector::builder();
+    /// builder.provide(Foo::default.singleton().with_interface::<dyn Fooable>());
+    ///
+    /// // Foo can now be requested through its interface of `dyn Fooable`.
+    /// let injector = builder.build();
+    /// let fooable: Svc<dyn Fooable> = injector.get().unwrap();
+    /// fooable.bar();
+    ///
+    /// // It can't be requested through its original type
+    /// assert!(injector.get::<Svc<Foo>>().is_err());
+    /// ```
+    fn with_interface<I: ?Sized + InterfaceFor<Self::Result>>(
+        self,
+    ) -> InterfaceProvider<I, Self> {
+        InterfaceProvider {
+            inner: self,
+            marker: PhantomData,
+        }
+    }
+}
+
+/// Provides a service as an implementation of an interface. See
+/// [`TypedProvider::with_interface()`] for more information.
+pub struct InterfaceProvider<I, P>
+where
+    P: TypedProvider,
+    I: ?Sized + InterfaceFor<P::Result>,
+{
+    inner: P,
+    marker: PhantomData<fn() -> I>,
+}
+
+impl<I, P> Provider for InterfaceProvider<I, P>
+where
+    P: TypedProvider,
+    I: ?Sized + InterfaceFor<P::Result>,
+{
+    fn result(&self) -> ServiceInfo {
+        ServiceInfo::of::<I>()
+    }
+
+    fn provide(&mut self, injector: &Injector) -> InjectResult<DynSvc> {
+        let result = self.inner.provide(injector)?;
+        Ok(result as DynSvc)
+    }
 }
