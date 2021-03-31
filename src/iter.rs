@@ -68,14 +68,22 @@ impl<I: ?Sized + Interface> Services<I> {
 
     /// Gets the number of implementations of this interface.
     #[must_use]
+    #[allow(clippy::missing_panics_doc)]
     pub fn len(&self) -> usize {
-        self.providers.as_ref().unwrap().len()
+        self.providers
+            .as_ref()
+            .unwrap() // Should never panic
+            .len()
     }
 
     /// Returns `true` if there are no implementations of this interface.
     #[must_use]
+    #[allow(clippy::clippy::missing_panics_doc)]
     pub fn is_empty(&self) -> bool {
-        self.providers.as_ref().unwrap().is_empty()
+        self.providers
+            .as_ref()
+            .unwrap() // Should never panic
+            .is_empty()
     }
 }
 
@@ -97,6 +105,7 @@ impl<I: ?Sized + Interface> Drop for Services<I> {
                     ))
                 })?;
 
+            #[allow(clippy::missing_panics_doc)] // Should never panic
             if provider_entry.replace(providers.take().unwrap()).is_some() {
                 Err(InjectError::InternalError(format!(
                     "another provider for {} was added during its activation",
