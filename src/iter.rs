@@ -4,15 +4,59 @@ use crate::{
 };
 use std::marker::PhantomData;
 
+/// A collection of all the providers for a particular interface.
+///
+/// If an interface will only have one implementation registered for it, then
+/// it may be easier to request [`Svc<T>`] from the container instead. However,
+/// if multiple implementations are registered (or no implementations are
+/// registered), then this will allow all of those implementations to be
+/// iterated over.
+///
+/// An iterator over all the implementations of an interface. Each service is
+/// activated on demand.
+/// 
+/// ```
+/// use runtime_injector::{Injector, Services, Svc, IntoTransient, interface, TypedProvider};
+/// 
+/// trait Fooable {
+///     fn baz(&self) {}
+/// }
+///
+/// interface!(Fooable = [Foo, Bar]);
+/// 
+/// #[derive(Default)]
+/// struct Foo;
+/// impl Fooable for Foo {}
+///
+/// #[derive(Default)]
+/// struct Bar;
+/// impl Fooable for Bar {}
+/// 
+/// let mut builder = Injector::builder();
+/// builder.provide(Foo::default.transient().with_interface::<dyn Fooable>());
+/// builder.provide(Bar::default.transient().with_interface::<dyn Fooable>());
+/// 
+/// let injector = builder.build();
+/// let mut counter = 0;
+/// let mut fooables: Services<dyn Fooable> = injector.get().unwrap();
+/// for foo in fooables.get_all() {
+///     counter += 1;
+///     foo.unwrap().baz();
+/// }
+/// 
+/// assert_eq!(2, counter);
+/// ```
 pub struct Services<I: ?Sized + Interface> {
     pub(crate) injector: Injector,
     pub(crate) service_info: ServiceInfo,
     pub(crate) provider_map: MapContainer<ProviderMap>,
     pub(crate) providers: Option<Vec<Box<dyn Provider>>>,
-    pub(crate) marker: PhantomData<*const I>,
+    pub(crate) marker: PhantomData<fn() -> I>,
 }
 
 impl<I: ?Sized + Interface> Services<I> {
+    /// Lazily gets all the implementations of this interface. Each service
+    /// will be requested on demand rather than all at once.
     pub fn get_all(&mut self) -> ServicesIter<'_, I> {
         ServicesIter {
             providers: self.providers.as_mut().unwrap(),
@@ -22,6 +66,7 @@ impl<I: ?Sized + Interface> Services<I> {
         }
     }
 
+    /// Gets the number of implementations of this interface.
     pub fn len(&self) -> usize {
         self.providers.as_ref().unwrap().len()
     }
@@ -65,11 +110,41 @@ impl<I: ?Sized + Interface> Drop for Services<I> {
     }
 }
 
+/// An iterator over all the implementations of an interface. Each service is
+/// activated on demand.
+/// 
+/// ```
+/// use runtime_injector::{Injector, Services, Svc, IntoTransient, constant};
+/// use std::sync::Mutex;
+/// 
+/// struct Foo;
+///
+/// fn make_foo(counter: Svc<Mutex<usize>>) -> Foo {
+///     // Increment the counter to track how many Foos have been created
+///     let mut counter = counter.lock().unwrap();
+///     *counter += 1;
+///     Foo
+/// }
+/// 
+/// let mut builder = Injector::builder();
+/// builder.provide(constant(Mutex::new(0usize)));
+/// builder.provide(make_foo.transient());
+/// 
+/// let injector = builder.build();
+/// let counter: Svc<Mutex<usize>> = injector.get().unwrap();
+/// let mut foos: Services<Foo> = injector.get().unwrap();
+/// 
+/// let mut iter = foos.get_all();
+/// assert_eq!(0, *counter.lock().unwrap());
+/// assert!(iter.next().is_some());
+/// assert_eq!(1, *counter.lock().unwrap());
+/// assert!(iter.next().is_none());
+/// ```
 pub struct ServicesIter<'a, I: ?Sized + Interface> {
     providers: &'a mut Vec<Box<dyn Provider>>,
     injector: &'a Injector,
     index: usize,
-    marker: PhantomData<*const I>,
+    marker: PhantomData<fn() -> I>,
 }
 
 impl<'a, I: ?Sized + Interface> Iterator for ServicesIter<'a, I> {
@@ -88,9 +163,4 @@ impl<'a, I: ?Sized + Interface> Iterator for ServicesIter<'a, I> {
             }
         }
     }
-}
-
-// TODO
-pub struct Interfaces<T: ?Sized + Interface> {
-    marker: PhantomData<*const T>,
 }

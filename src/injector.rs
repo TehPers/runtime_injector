@@ -138,15 +138,30 @@ impl Injector {
     /// Performs a request for a service. There are several types of requests
     /// that can be made to the service container by default:
     ///
-    /// - [`Svc<T>`](crate::Svc): Request a service pointer to the given
-    ///   interface and create an instance of the service if needed.
-    /// - `Option<Svc<I>>`: Request a service pointer to the given interface
+    /// - [`Svc<T>`](crate::Svc): Requests a service pointer to the given
+    ///   interface and creates an instance of the service if needed. If
+    ///   multiple service providers are registered for that interface, then
+    ///   returns an error instead.
+    /// - `Option<Svc<T>>`: Requests a service pointer to the given interface
     ///   and create an instance of the service if needed. If no provider for
-    ///   that service is registered, then return `Ok(None)` rather than
-    ///   throwing an error.
+    ///   that service is registered, then returns `Ok(None)` rather than
+    ///   returning an error. If multiple providers are registered, then
+    ///   instead returns an error.
+    /// - [`Services<T>`]: Requests all the implementations of an interface.
+    ///   This will lazily create the services on demand. See the
+    ///   [documentation for `Services<T>`](Services<T>) for more details.
+    /// - `Vec<Svc<T>>`: Requests all the implementations of an interface. This
+    ///   will eagerly create the services as part of the request.
+    /// - [`Injector`]: Requests a clone of the injector. While it doesn't make
+    ///   much sense to request this directly from the injector itself, this
+    ///   allows the injector to be requested as a dependency inside of
+    ///   services (for instance, factories).
+    ///
+    /// See the [documentation for `Request`](Request) for more information on
+    /// what can be requested.
     ///
     /// Requests to service pointers of sized types will attempt to use the
-    /// a registered provider to retrieve an instance of that service. For
+    /// registered provider to retrieve an instance of that service. For
     /// instance, a request for a singleton service will create an instance of
     /// that service if one doesn't exist already, and either return a service
     /// pointer to the instance that was already created, or return a service
@@ -188,6 +203,31 @@ impl Injector {
     /// let _bar: Svc<dyn Foo> = injector.get().unwrap();
     /// ```
     ///
+    /// If multiple providers for a service exist, then a request for a single
+    /// service pointer to that service will fail:
+    ///
+    /// ```
+    /// use runtime_injector::{interface, Injector, Svc, IntoSingleton, TypedProvider};
+    ///
+    /// trait Foo: Send + Sync {}
+    /// interface!(Foo = [Bar, Baz]);
+    ///
+    /// #[derive(Default)]
+    /// struct Bar;
+    /// impl Foo for Bar {}
+    ///
+    /// #[derive(Default)]
+    /// struct Baz;
+    /// impl Foo for Baz {}
+    ///
+    /// let mut builder = Injector::builder();
+    /// builder.provide(Bar::default.singleton().with_interface::<dyn Foo>());
+    /// builder.provide(Baz::default.singleton().with_interface::<dyn Foo>());
+    ///
+    /// let injector = builder.build();
+    /// assert!(injector.get::<Svc<dyn Foo>>().is_err());
+    /// ```
+    ///
     /// Custom request types can also be used by implementing [`Request`].
     pub fn get<R: Request>(&self) -> InjectResult<R> {
         R::request(self)
@@ -199,14 +239,16 @@ impl Injector {
     ) -> InjectResult<Services<I>> {
         let service_info = ServiceInfo::of::<I>();
         let providers = self.provider_map.with_inner_mut(|provider_map| {
-            provider_map
+            Ok(provider_map
                 .get_mut(&service_info)
-                .ok_or(InjectError::MissingProvider { service_info })?
-                .take()
-                .ok_or(InjectError::CycleDetected {
-                    service_info,
-                    cycle: vec![service_info],
+                .map(|providers| {
+                    providers.take().ok_or(InjectError::CycleDetected {
+                        service_info,
+                        cycle: vec![service_info],
+                    })
                 })
+                .transpose()?
+                .unwrap_or_else(|| Vec::new()))
         })?;
 
         Ok(Services {

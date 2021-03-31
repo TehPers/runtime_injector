@@ -71,6 +71,33 @@ pub trait TypedProvider: Sized + Provider {
         injector: &Injector,
     ) -> InjectResult<Svc<Self::Result>>;
 
+    /// Provides this service as an implementation of a particular interface.
+    /// Rather than requesting this service with its concrete type, it can
+    /// instead be requested by its interface type.
+    ///
+    /// ```
+    /// use runtime_injector::{TypedProvider, Injector, IntoSingleton, InjectResult, Svc, interface};
+    ///
+    /// trait Fooable {
+    ///     fn bar() {}
+    /// }
+    /// 
+    /// interface!(Fooable = [Foo]);
+    /// 
+    /// #[derive(Default)]
+    /// struct Foo;
+    ///
+    /// let mut builder = Injector::builder();
+    /// builder.provide(Foo::default.singleton().with_interface::<dyn Fooable>());
+    ///
+    /// // Foo can now be requested through its interface of `dyn Fooable`.
+    /// let injector = builder.build();
+    /// let fooable: Svc<dyn Fooable> = injector.get().unwrap();
+    /// fooable.bar();
+    ///
+    /// // It can't be requested through its original type
+    /// assert!(injector.get::<Svc<Foo>>().is_none());
+    /// ```
     fn with_interface<I: ?Sized + InterfaceFor<Self::Result>>(
         self,
     ) -> InterfaceProvider<I, Self> {
@@ -81,33 +108,15 @@ pub trait TypedProvider: Sized + Provider {
     }
 }
 
-pub struct ServiceIter<'a> {
-    providers: &'a mut Vec<Box<dyn Provider>>,
-    injector: &'a Injector,
-    index: usize,
-}
-
-impl<'a> Iterator for ServiceIter<'a> {
-    type Item = InjectResult<DynSvc>;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        match self.providers.get_mut(self.index) {
-            Some(provider) => {
-                self.index += 1;
-                Some(provider.provide(self.injector))
-            }
-            None => None,
-        }
-    }
-}
-
+/// Provides a service as an implementation of an interface. See
+/// [`TypedProvider::with_interface()`] for more information.
 pub struct InterfaceProvider<I, P>
 where
     P: TypedProvider,
     I: ?Sized + InterfaceFor<P::Result>,
 {
     inner: P,
-    marker: PhantomData<*const I>,
+    marker: PhantomData<fn() -> I>,
 }
 
 impl<I, P> Provider for InterfaceProvider<I, P>

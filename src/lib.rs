@@ -141,7 +141,7 @@
 //! ```
 
 #![forbid(unsafe_code)]
-// #![warn(missing_docs)]
+#![warn(missing_docs)]
 #![allow(
     clippy::module_name_repetitions,
     clippy::missing_errors_doc,
