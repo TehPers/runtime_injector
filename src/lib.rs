@@ -1,8 +1,8 @@
 //! Runtime dependency injection.
 //!
 //! By default, services provided by the [`Injector`] are not thread-safe. This
-//! is because `Rc<T>` is used to hold instances of the services, which is not
-//! a thread-safe pointer type. This can be changed by disabling default
+//! is because `Rc<T>` is used to hold instances of the services, which is
+//! not a thread-safe pointer type. This can be changed by disabling default
 //! features and enabling the "arc" feature:
 //!
 //! ```text

@@ -75,7 +75,7 @@ pub struct ServiceInfo {
 }
 
 impl ServiceInfo {
-    /// Creates a `ServiceInfo` for the given type.
+    /// Creates a [`ServiceInfo`] for the given type.
     #[must_use]
     pub fn of<T: ?Sized + Any>() -> Self {
         ServiceInfo {
@@ -84,7 +84,7 @@ impl ServiceInfo {
         }
     }
 
-    /// Gets the `TypeId` for this service.
+    /// Gets the [`TypeId`] for this service.
     #[must_use]
     pub fn id(&self) -> TypeId {
         self.id

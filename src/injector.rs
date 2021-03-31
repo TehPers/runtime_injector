@@ -119,7 +119,7 @@ pub struct Injector {
 }
 
 impl Injector {
-    /// Creates a builder for this injector. This is the preferred way of
+    /// Creates a builder for an injector. This is the preferred way of
     /// creating an injector.
     #[must_use]
     pub fn builder() -> InjectorBuilder {
@@ -142,7 +142,7 @@ impl Injector {
     ///   interface and creates an instance of the service if needed. If
     ///   multiple service providers are registered for that interface, then
     ///   returns an error instead.
-    /// - `Option<Svc<T>>`: Requests a service pointer to the given interface
+    /// - [`Option<Svc<T>>`]: Requests a service pointer to the given interface
     ///   and create an instance of the service if needed. If no provider for
     ///   that service is registered, then returns `Ok(None)` rather than
     ///   returning an error. If multiple providers are registered, then
@@ -150,8 +150,8 @@ impl Injector {
     /// - [`Services<T>`]: Requests all the implementations of an interface.
     ///   This will lazily create the services on demand. See the
     ///   [documentation for `Services<T>`](Services<T>) for more details.
-    /// - `Vec<Svc<T>>`: Requests all the implementations of an interface. This
-    ///   will eagerly create the services as part of the request.
+    /// - [`Vec<Svc<T>>`]: Requests all the implementations of an interface.
+    ///   This will eagerly create the services as part of the request.
     /// - [`Injector`]: Requests a clone of the injector. While it doesn't make
     ///   much sense to request this directly from the injector itself, this
     ///   allows the injector to be requested as a dependency inside of
