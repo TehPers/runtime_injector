@@ -1,6 +1,6 @@
 use crate::{Injector, Provider, ProviderMap};
 
-/// A builder for an `Injector`.
+/// A builder for an [`Injector`].
 #[derive(Default)]
 pub struct InjectorBuilder {
     providers: ProviderMap,

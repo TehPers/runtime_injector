@@ -21,7 +21,7 @@ where
     R: Service,
     F: ServiceFactory<D, R>,
 {
-    /// Creates a new `SingletonProvider` using a service factory.
+    /// Creates a new [`SingletonProvider`] using a service factory.
     #[must_use]
     pub fn new(func: F) -> Self {
         SingletonProvider {

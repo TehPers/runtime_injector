@@ -3,39 +3,65 @@
 use derive_more::{Display, Error};
 use std::any::{Any, TypeId};
 
-#[cfg(feature = "arc")]
-mod types {
-    use std::{any::Any, sync::Arc};
-
-    /// A reference-counted pointer holding a service. The pointer type is
-    /// determined by the feature flags passed to this crate.
-    pub type Svc<T> = Arc<T>;
-
-    /// A reference-counted service pointer holding an instance of `dyn Any`.
-    pub type DynSvc = Svc<dyn Any + Send + Sync>;
-
-    /// Implemented automatically on types that are capable of being a service.
-    pub trait Service: Any + Send + Sync {}
-    impl<T: ?Sized + Any + Send + Sync> Service for T {}
-}
-
 #[cfg(feature = "rc")]
-mod types {
-    use std::{any::Any, rc::Rc};
-
-    /// A reference-counted pointer holding a service. The pointer type is
-    /// determined by the feature flags passed to this crate.
-    pub type Svc<T> = Rc<T>;
-
-    /// A reference-counted service pointer holding an instance of `dyn Any`.
-    pub type DynSvc = Svc<dyn Any>;
-
-    /// Implemented automatically on types that are capable of being a service.
-    pub trait Service: Any {}
-    impl<T: ?Sized + Any> Service for T {}
+macro_rules! feature_unique {
+    ({ $($common:tt)* }, { $($rc:tt)* }, { $($_arc:tt)* }) => {
+        $($common)*
+        $($rc)*
+    };
 }
 
-pub use types::*;
+#[cfg(feature = "arc")]
+macro_rules! feature_unique {
+    ({ $($common:tt)* }, { $($_rc:tt)* }, { $($arc:tt)* }) => {
+        $($common)*
+        $($arc)*
+    };
+}
+
+feature_unique!(
+    {
+        /// A reference-counted pointer holding a service. The pointer type is
+        /// determined by the feature flags passed to this crate.
+        ///
+        /// - **rc**: Pointer type is `Rc<T>`
+        /// - **arc**: Pointer type is `Arc<T>`
+    },
+    {
+        pub type Svc<T> = std::rc::Rc<T>;
+    },
+    {
+        pub type Svc<T> = std::sync::Arc<T>;
+    }
+);
+
+feature_unique!(
+    {
+        /// A reference-counted service pointer holding an instance of `dyn
+        /// Any`.
+    },
+    {
+        pub type DynSvc = Svc<dyn Any>;
+    },
+    {
+        pub type DynSvc = Svc<dyn Any + Send + Sync>;
+    }
+);
+
+feature_unique!(
+    {
+        /// Implemented automatically on types that are capable of being a
+        /// service.
+    },
+    {
+        pub trait Service: Any {}
+        impl<T: ?Sized + Any> Service for T {}
+    },
+    {
+        pub trait Service: Any + Send + Sync {}
+        impl<T: ?Sized + Any + Send + Sync> Service for T {}
+    }
+);
 
 /// A result from attempting to inject dependencies into a service and
 /// construct an instance of it.
@@ -49,7 +75,7 @@ pub struct ServiceInfo {
 }
 
 impl ServiceInfo {
-    /// Creates a `ServiceInfo` for the given type.
+    /// Creates a [`ServiceInfo`] for the given type.
     #[must_use]
     pub fn of<T: ?Sized + Any>() -> Self {
         ServiceInfo {
@@ -58,7 +84,7 @@ impl ServiceInfo {
         }
     }
 
-    /// Gets the `TypeId` for this service.
+    /// Gets the [`TypeId`] for this service.
     #[must_use]
     pub fn id(&self) -> TypeId {
         self.id

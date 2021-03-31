@@ -20,7 +20,7 @@ where
     R: Service,
     F: ServiceFactory<D, R>,
 {
-    /// Creates a new `TransientProvider` using a service factory.
+    /// Creates a new [`TransientProvider`] using a service factory.
     #[must_use]
     pub fn new(func: F) -> Self {
         TransientProvider {

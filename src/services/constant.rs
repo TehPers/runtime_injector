@@ -14,7 +14,7 @@ impl<R> ConstantProvider<R>
 where
     R: Service,
 {
-    /// Creates a new `ConstantProvider` using a predetermined value.
+    /// Creates a new [`ConstantProvider`] using a predetermined value.
     #[must_use]
     pub fn new(value: R) -> Self {
         ConstantProvider {
@@ -43,11 +43,11 @@ impl<T: Service> From<T> for ConstantProvider<T> {
     }
 }
 
-/// Create a service from a constant value. While the service itself will never
-/// be exposed through a mutable reference, if it supports interior mutability,
-/// its fields still can be mutated. Since the provider created with this
-/// function doesn't recreate the value each time it's requested, state can be
-/// stored in this manner.
+/// Create a provider from a constant value. While the service itself will
+/// never be exposed through a mutable reference, if it supports interior
+/// mutability, its fields still can be mutated. Since the provider created
+/// with this function doesn't recreate the value each time it's requested,
+/// state can be stored in this manner.
 ///
 /// # Example
 ///

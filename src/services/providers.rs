@@ -7,10 +7,10 @@ use crate::{
 
 /// Weakly typed service provider. Given an injector, this will provide an
 /// implementation of a service. This is automatically implemented for all
-/// types that implement `TypedProvider`, and `TypedProvider` should be
+/// types that implement [`TypedProvider`], and [`TypedProvider`] should be
 /// preferred if possible to allow for stronger type checking.
 pub trait Provider: Service {
-    /// The `ServiceInfo` which describes the type returned by this provider.
+    /// The [`ServiceInfo`] which describes the type returned by this provider.
     fn result(&self) -> ServiceInfo;
 
     /// Provides an instance of the service.
@@ -34,9 +34,9 @@ where
 /// A strongly-typed service provider. Types which implement this provide
 /// instances of a service type when requested. Examples of typed providers
 /// include providers created from service factories or constant providers.
-/// This should be preferred over `Provider` for custom service providers if
-/// possible due to the strong type guarantees this provides. `Provider` is
-/// automatically implemented for all types which implement `TypedProvider`.
+/// This should be preferred over [`Provider`] for custom service providers if
+/// possible due to the strong type guarantees this provides. [`Provider`] is
+/// automatically implemented for all types which implement [`TypedProvider`].
 ///
 /// # Example
 ///
@@ -64,7 +64,7 @@ pub trait TypedProvider: Sized + Provider {
     /// The type of service this provider can activate.
     type Result: Interface;
 
-    /// Provides an instance of the service. The `Injector` passed in can be
+    /// Provides an instance of the service. The [`Injector`] passed in can be
     /// used to retrieve instances of any dependencies this service has.
     fn provide_typed(
         &mut self,

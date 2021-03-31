@@ -1,13 +1,13 @@
 //! Runtime dependency injection.
 //!
-//! By default, services provided by the `Injector` are not thread-safe. This
-//! is because `Rc<T>` is used to hold instances of the services, which is not
-//! a thread-safe pointer type. This can be changed by disabling default
+//! By default, services provided by the [`Injector`] are not thread-safe. This
+//! is because `Rc<T>` is used to hold instances of the services, which is
+//! not a thread-safe pointer type. This can be changed by disabling default
 //! features and enabling the "arc" feature:
 //!
 //! ```text
 //! [dependencies.runtime_injector]
-//! version = "*"
+//! version = "*" # Replace with the version you want to use
 //! default-features = false
 //! features = ["arc"]
 //! ```
@@ -36,20 +36,20 @@
 //!
 //! # Service lifetimes
 //!
-//! Lifetimes of services created by the `Injector` are controlled by the
+//! Lifetimes of services created by the [`Injector`] are controlled by the
 //! provider used to construct those lifetimes. Currently, there are three
 //! built-in service provider types:
 //!
-//! - Singleton: A service is created only the first time it is requested and
-//!   that single instance is reused for each future request.
-//! - Transient: A service is created each time it is requested.
-//! - Constant: Used for services that are not created using a factory function
-//!   and instead can have their instance provided to the container directly.
-//!   This behaves similar to singleton in that the same instance is provided
-//!   each time the service is requested.
+//! - **Singleton:** A service is created only the first time it is requested
+//!   and that single instance is reused for each future request.
+//! - **Transient:** A service is created each time it is requested.
+//! - **Constant:** Used for services that are not created using a factory
+//!   function and instead can have their instance provided to the container
+//!   directly. This behaves similar to singleton in that the same instance is
+//!   provided each time the service is requested.
 //!
 //! Custom service providers can also be created by implementing the
-//! `TypedProvider` trait.
+//! [`TypedProvider`] trait.
 //!
 //! # Example
 //!
