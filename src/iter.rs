@@ -57,9 +57,10 @@ pub struct Services<I: ?Sized + Interface> {
 impl<I: ?Sized + Interface> Services<I> {
     /// Lazily gets all the implementations of this interface. Each service
     /// will be requested on demand rather than all at once.
+    #[allow(clippy::missing_panics_doc)]
     pub fn get_all(&mut self) -> ServicesIter<'_, I> {
         ServicesIter {
-            providers: self.providers.as_mut().unwrap(),
+            providers: self.providers.as_mut().unwrap(), // Should never panic
             injector: &self.injector,
             index: 0,
             marker: PhantomData,
