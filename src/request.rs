@@ -1,4 +1,6 @@
-use crate::{InjectError, InjectResult, Injector, Interface, ServiceInfo, Services, Svc};
+use crate::{
+    InjectError, InjectResult, Injector, Interface, ServiceInfo, Services, Svc,
+};
 
 /// A request to an injector.
 pub trait Request: Sized {

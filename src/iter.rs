@@ -1,6 +1,6 @@
 use crate::{
     InjectError, InjectResult, Injector, Interface, MapContainer,
-    MapContainerEx, Provider, ProviderMap, Service, ServiceInfo, Svc,
+    MapContainerEx, Provider, ProviderMap, ServiceInfo, Svc,
 };
 use std::marker::PhantomData;
 
@@ -17,7 +17,6 @@ impl<I: ?Sized + Interface> Services<I> {
         ServicesIter {
             providers: self.providers.as_mut().unwrap(),
             injector: &self.injector,
-            service_info: self.service_info,
             index: 0,
             marker: PhantomData,
         }
@@ -69,7 +68,6 @@ impl<I: ?Sized + Interface> Drop for Services<I> {
 pub struct ServicesIter<'a, I: ?Sized + Interface> {
     providers: &'a mut Vec<Box<dyn Provider>>,
     injector: &'a Injector,
-    service_info: ServiceInfo,
     index: usize,
     marker: PhantomData<*const I>,
 }

@@ -1,12 +1,11 @@
 use crate::{
-    Services, InjectError, InjectResult, InjectorBuilder, Interface,
-    Provider, Request, Service, ServiceInfo,
+    InjectError, InjectResult, InjectorBuilder, Interface, Provider, Request,
+    ServiceInfo, Services,
 };
 use std::{collections::HashMap, marker::PhantomData};
 
 pub(crate) type ProviderMap =
     HashMap<ServiceInfo, Option<Vec<Box<dyn Provider>>>>;
-pub(crate) type ImplementationMap = HashMap<ServiceInfo, ServiceInfo>;
 
 pub(crate) trait MapContainerEx<T> {
     fn new(value: T) -> Self;
@@ -117,11 +116,10 @@ pub(crate) use types::*;
 #[derive(Clone)]
 pub struct Injector {
     provider_map: MapContainer<ProviderMap>,
-    // implementations: MapContainer<ImplementationMap>,
 }
 
 impl Injector {
-    /// Creates a build for this injector. This is the preferred way of
+    /// Creates a builder for this injector. This is the preferred way of
     /// creating an injector.
     #[must_use]
     pub fn builder() -> InjectorBuilder {
@@ -129,27 +127,23 @@ impl Injector {
     }
 
     /// Creates a new injector directly from its providers and implementations.
-    /// Prefer `Injector::builder()` for creating new injectors instead.
+    /// Prefer [`Injector::builder()`] for creating new injectors instead.
     #[must_use]
-    pub fn new(
-        providers: ProviderMap,
-        // implementations: ImplementationMap,
-    ) -> Self {
+    pub fn new(providers: ProviderMap) -> Self {
         Injector {
             provider_map: MapContainerEx::new(providers),
-            // implementations: MapContainerEx::new(implementations),
         }
     }
 
     /// Performs a request for a service. There are several types of requests
     /// that can be made to the service container by default:
     ///
-    /// - `Svc<I>`: Request a service pointer to the given interface and create
-    ///   an instance of the service if needed.
-    /// - `Option<Svc<I>>`: Request a service pointer to the given interface and
-    ///   create an instance of the service if needed. If no provider for that
-    ///   service is registered, then return `Ok(None)` rather than throwing an
-    ///   error.
+    /// - [`Svc<T>`](crate::Svc): Request a service pointer to the given
+    ///   interface and create an instance of the service if needed.
+    /// - `Option<Svc<I>>`: Request a service pointer to the given interface
+    ///   and create an instance of the service if needed. If no provider for
+    ///   that service is registered, then return `Ok(None)` rather than
+    ///   throwing an error.
     ///
     /// Requests to service pointers of sized types will attempt to use the
     /// a registered provider to retrieve an instance of that service. For
@@ -178,7 +172,7 @@ impl Injector {
     /// pointer to a `Bar`, although the return type will be `Svc<dyn Foo>`.
     ///
     /// ```
-    /// use runtime_injector::{interface, Injector, Svc, IntoSingleton};
+    /// use runtime_injector::{interface, Injector, Svc, IntoSingleton, TypedProvider};
     ///
     /// trait Foo: Send + Sync {}
     /// interface!(Foo = [Bar]);
@@ -188,32 +182,32 @@ impl Injector {
     /// impl Foo for Bar {}
     ///
     /// let mut builder = Injector::builder();
-    /// builder.provide(Bar::default.singleton());
-    /// builder.implement::<dyn Foo, Bar>();
+    /// builder.provide(Bar::default.singleton().with_interface::<dyn Foo>());
     ///
     /// let injector = builder.build();
     /// let _bar: Svc<dyn Foo> = injector.get().unwrap();
     /// ```
     ///
-    /// Custom request types can also be used by implementing `Request`.
+    /// Custom request types can also be used by implementing [`Request`].
     pub fn get<R: Request>(&self) -> InjectResult<R> {
         R::request(self)
     }
 
     /// Gets implementations of a service from the container.
-    pub fn get_service<I: ?Sized + Interface>(&self) -> InjectResult<Services<I>> {
+    pub fn get_service<I: ?Sized + Interface>(
+        &self,
+    ) -> InjectResult<Services<I>> {
         let service_info = ServiceInfo::of::<I>();
-        let providers =
-            self.provider_map.with_inner_mut(|provider_map| {
-                provider_map
-                    .get_mut(&service_info)
-                    .ok_or(InjectError::MissingProvider { service_info })?
-                    .take()
-                    .ok_or(InjectError::CycleDetected {
-                        service_info,
-                        cycle: vec![service_info],
-                    })
-            })?;
+        let providers = self.provider_map.with_inner_mut(|provider_map| {
+            provider_map
+                .get_mut(&service_info)
+                .ok_or(InjectError::MissingProvider { service_info })?
+                .take()
+                .ok_or(InjectError::CycleDetected {
+                    service_info,
+                    cycle: vec![service_info],
+                })
+        })?;
 
         Ok(Services {
             injector: self.clone(),

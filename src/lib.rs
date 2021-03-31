@@ -54,7 +54,7 @@
 //! # Example
 //!
 //! ```
-//! use runtime_injector::{interface, Injector, Svc, IntoSingleton};
+//! use runtime_injector::{interface, Injector, Svc, IntoSingleton, TypedProvider};
 //! use std::error::Error;
 //!
 //! // Some type that represents a user
@@ -122,15 +122,13 @@
 //!     // constructing instances of those types that we aren't actually using.
 //!     let mut builder = Injector::builder();
 //!     builder.provide(UserService::new.singleton());
-//!     builder.provide(SqlDataService::default.singleton());
-//!     builder.provide(MockDataService::default.singleton());
 //!
 //!     // Note that we can register closures as providers as well
 //!     builder.provide((|_: Svc<dyn DataService>| "Hello, world!").singleton());
 //!     builder.provide((|_: Option<Svc<i32>>| 120.9).singleton());
 //!     
 //!     // Let's choose to use the MockDataService as our data service
-//!     builder.implement::<dyn DataService, MockDataService>();
+//!     builder.provide(MockDataService::default.singleton().with_interface::<dyn DataService>());
 //!     
 //!     // Now that we've registered all our providers and implementations, we
 //!     // can start relying on our container to create our services for us!
@@ -143,7 +141,7 @@
 //! ```
 
 #![forbid(unsafe_code)]
-#![warn(missing_docs)]
+// #![warn(missing_docs)]
 #![allow(
     clippy::module_name_repetitions,
     clippy::missing_errors_doc,

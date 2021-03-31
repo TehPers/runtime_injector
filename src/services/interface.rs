@@ -8,6 +8,8 @@ use crate::{DynSvc, InjectError, InjectResult, Service, ServiceInfo, Svc};
 /// declared explicitly before use. This trait should usually be implemented
 /// by the `interface!` macro.
 pub trait Interface: Service {
+    /// Downcasts a dynamic service pointer into a service pointer of this
+    /// interface type.
     fn downcast(service: DynSvc) -> InjectResult<Svc<Self>>;
 }
 

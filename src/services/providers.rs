@@ -1,6 +1,8 @@
+use std::marker::PhantomData;
+
 use crate::{
-    DynSvc, InjectError, InjectResult, Injector, MapContainer, MapContainerEx,
-    ProviderMap, Service, ServiceInfo, Svc,
+    DynSvc, InjectResult, Injector, Interface, InterfaceFor, Service,
+    ServiceInfo, Svc,
 };
 
 /// Weakly typed service provider. Given an injector, this will provide an
@@ -58,9 +60,9 @@ where
 /// let injector = builder.build();
 /// let _foo: Svc<Foo> = injector.get().unwrap();
 /// ```
-pub trait TypedProvider: Provider {
+pub trait TypedProvider: Sized + Provider {
     /// The type of service this provider can activate.
-    type Result: Service;
+    type Result: Interface;
 
     /// Provides an instance of the service. The `Injector` passed in can be
     /// used to retrieve instances of any dependencies this service has.
@@ -68,6 +70,15 @@ pub trait TypedProvider: Provider {
         &mut self,
         injector: &Injector,
     ) -> InjectResult<Svc<Self::Result>>;
+
+    fn with_interface<I: ?Sized + InterfaceFor<Self::Result>>(
+        self,
+    ) -> InterfaceProvider<I, Self> {
+        InterfaceProvider {
+            inner: self,
+            marker: PhantomData,
+        }
+    }
 }
 
 pub struct ServiceIter<'a> {
@@ -87,5 +98,29 @@ impl<'a> Iterator for ServiceIter<'a> {
             }
             None => None,
         }
+    }
+}
+
+pub struct InterfaceProvider<I, P>
+where
+    P: TypedProvider,
+    I: ?Sized + InterfaceFor<P::Result>,
+{
+    inner: P,
+    marker: PhantomData<*const I>,
+}
+
+impl<I, P> Provider for InterfaceProvider<I, P>
+where
+    P: TypedProvider,
+    I: ?Sized + InterfaceFor<P::Result>,
+{
+    fn result(&self) -> ServiceInfo {
+        ServiceInfo::of::<I>()
+    }
+
+    fn provide(&mut self, injector: &Injector) -> InjectResult<DynSvc> {
+        let result = self.inner.provide(injector)?;
+        Ok(result as DynSvc)
     }
 }

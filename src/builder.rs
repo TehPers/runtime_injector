@@ -1,10 +1,9 @@
-use crate::{Injector, Interface, Provider, ProviderMap, ServiceInfo};
+use crate::{Injector, Provider, ProviderMap};
 
 /// A builder for an `Injector`.
 #[derive(Default)]
 pub struct InjectorBuilder {
     providers: ProviderMap,
-    // implementations: ImplementationMap,
 }
 
 impl InjectorBuilder {
@@ -13,19 +12,6 @@ impl InjectorBuilder {
     pub fn provide<P: Provider>(&mut self, provider: P) {
         self.providers
             .entry(provider.result())
-            .or_insert_with(|| Some(Vec::new()))
-            .as_mut()
-            .unwrap()
-            .push(Box::new(provider));
-    }
-
-    pub fn provide_as<I, P>(&mut self, provider: P)
-    where
-        I: ?Sized + Interface,
-        P: Provider,
-    {
-        self.providers
-            .entry(ServiceInfo::of::<I>())
             .or_insert_with(|| Some(Vec::new()))
             .as_mut()
             .unwrap()
