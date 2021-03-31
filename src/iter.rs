@@ -14,16 +14,16 @@ use std::marker::PhantomData;
 ///
 /// An iterator over all the implementations of an interface. Each service is
 /// activated on demand.
-/// 
+///
 /// ```
 /// use runtime_injector::{Injector, Services, Svc, IntoTransient, interface, TypedProvider};
-/// 
+///
 /// trait Fooable: Send + Sync {
 ///     fn baz(&self) {}
 /// }
 ///
 /// interface!(Fooable = [Foo, Bar]);
-/// 
+///
 /// #[derive(Default)]
 /// struct Foo;
 /// impl Fooable for Foo {}
@@ -31,11 +31,11 @@ use std::marker::PhantomData;
 /// #[derive(Default)]
 /// struct Bar;
 /// impl Fooable for Bar {}
-/// 
+///
 /// let mut builder = Injector::builder();
 /// builder.provide(Foo::default.transient().with_interface::<dyn Fooable>());
 /// builder.provide(Bar::default.transient().with_interface::<dyn Fooable>());
-/// 
+///
 /// let injector = builder.build();
 /// let mut counter = 0;
 /// let mut fooables: Services<dyn Fooable> = injector.get().unwrap();
@@ -43,7 +43,7 @@ use std::marker::PhantomData;
 ///     counter += 1;
 ///     foo.unwrap().baz();
 /// }
-/// 
+///
 /// assert_eq!(2, counter);
 /// ```
 pub struct Services<I: ?Sized + Interface> {
@@ -119,11 +119,11 @@ impl<I: ?Sized + Interface> Drop for Services<I> {
 
 /// An iterator over all the implementations of an interface. Each service is
 /// activated on demand.
-/// 
+///
 /// ```
 /// use runtime_injector::{Injector, Services, Svc, IntoTransient, constant};
 /// use std::sync::Mutex;
-/// 
+///
 /// struct Foo;
 ///
 /// fn make_foo(counter: Svc<Mutex<usize>>) -> Foo {
@@ -132,15 +132,15 @@ impl<I: ?Sized + Interface> Drop for Services<I> {
 ///     *counter += 1;
 ///     Foo
 /// }
-/// 
+///
 /// let mut builder = Injector::builder();
 /// builder.provide(constant(Mutex::new(0usize)));
 /// builder.provide(make_foo.transient());
-/// 
+///
 /// let injector = builder.build();
 /// let counter: Svc<Mutex<usize>> = injector.get().unwrap();
 /// let mut foos: Services<Foo> = injector.get().unwrap();
-/// 
+///
 /// let mut iter = foos.get_all();
 /// assert_eq!(0, *counter.lock().unwrap());
 /// assert!(iter.next().is_some());

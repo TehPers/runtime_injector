@@ -81,9 +81,9 @@ pub trait TypedProvider: Sized + Provider {
     /// trait Fooable: Send + Sync {
     ///     fn bar(&self) {}
     /// }
-    /// 
+    ///
     /// interface!(Fooable = [Foo]);
-    /// 
+    ///
     /// #[derive(Default)]
     /// struct Foo;
     /// impl Fooable for Foo {}
