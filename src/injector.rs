@@ -248,7 +248,7 @@ impl Injector {
                     })
                 })
                 .transpose()?
-                .unwrap_or_else(|| Vec::new()))
+                .unwrap_or_else(Vec::new))
         })?;
 
         Ok(Services {

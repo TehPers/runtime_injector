@@ -78,14 +78,15 @@ pub trait TypedProvider: Sized + Provider {
     /// ```
     /// use runtime_injector::{TypedProvider, Injector, IntoSingleton, InjectResult, Svc, interface};
     ///
-    /// trait Fooable {
-    ///     fn bar() {}
+    /// trait Fooable: Send + Sync {
+    ///     fn bar(&self) {}
     /// }
     /// 
     /// interface!(Fooable = [Foo]);
     /// 
     /// #[derive(Default)]
     /// struct Foo;
+    /// impl Fooable for Foo {}
     ///
     /// let mut builder = Injector::builder();
     /// builder.provide(Foo::default.singleton().with_interface::<dyn Fooable>());
@@ -96,7 +97,7 @@ pub trait TypedProvider: Sized + Provider {
     /// fooable.bar();
     ///
     /// // It can't be requested through its original type
-    /// assert!(injector.get::<Svc<Foo>>().is_none());
+    /// assert!(injector.get::<Svc<Foo>>().is_err());
     /// ```
     fn with_interface<I: ?Sized + InterfaceFor<Self::Result>>(
         self,

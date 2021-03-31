@@ -14,6 +14,7 @@ pub trait Interface: Service {
 }
 
 impl<T: Service> Interface for T {
+    #[allow(clippy::map_err_ignore)]
     fn downcast(service: DynSvc) -> InjectResult<Svc<Self>> {
         service
             .downcast()

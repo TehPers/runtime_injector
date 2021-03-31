@@ -18,7 +18,7 @@ use std::marker::PhantomData;
 /// ```
 /// use runtime_injector::{Injector, Services, Svc, IntoTransient, interface, TypedProvider};
 /// 
-/// trait Fooable {
+/// trait Fooable: Send + Sync {
 ///     fn baz(&self) {}
 /// }
 ///
@@ -67,8 +67,15 @@ impl<I: ?Sized + Interface> Services<I> {
     }
 
     /// Gets the number of implementations of this interface.
+    #[must_use]
     pub fn len(&self) -> usize {
         self.providers.as_ref().unwrap().len()
+    }
+
+    /// Returns `true` if there are no implementations of this interface.
+    #[must_use]
+    pub fn is_empty(&self) -> bool {
+        self.providers.as_ref().unwrap().is_empty()
     }
 }
 
