@@ -128,6 +128,18 @@ pub enum InjectError {
         service_info: ServiceInfo,
     },
 
+    /// The requested service has too many providers registered.
+    #[display(
+        fmt = "the requested service has {} providers registered (did you mean to request a Services<T> instead?)",
+        providers
+    )]
+    MultipleProviders {
+        /// The service that was requested.
+        service_info: ServiceInfo,
+        /// The number of providers registered for that service.
+        providers: usize,
+    },
+
     /// An unexpected error has occurred. This is usually caused by a bug in
     /// the library itself.
     #[display(

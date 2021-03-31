@@ -1,43 +1,27 @@
-use crate::{Injector, InterfaceFor, Provider, Service, ServiceInfo};
-use std::collections::HashMap;
+use crate::{Injector, Provider, ProviderMap};
 
 /// A builder for an `Injector`.
 #[derive(Default)]
 pub struct InjectorBuilder {
-    providers: HashMap<ServiceInfo, Option<Box<dyn Provider>>>,
-    implementations: HashMap<ServiceInfo, ServiceInfo>,
+    providers: ProviderMap,
 }
 
 impl InjectorBuilder {
-    /// Assigns the provider for a service type. If a provider was already
-    /// registered for the same service type, then that old provider is
-    /// returned and the new provider is used instead.
-    pub fn provide<P: Provider>(
-        &mut self,
-        provider: P,
-    ) -> Option<Box<dyn Provider>> {
-        let result = provider.result();
-        let provider = Box::new(provider);
-        self.providers.insert(result, Some(provider)).flatten()
-    }
-
-    /// Assigns the implementation of an interface for a service type.
-    pub fn implement<Interface, Implementation>(
-        &mut self,
-    ) -> Option<ServiceInfo>
-    where
-        Interface: ?Sized + InterfaceFor<Implementation>,
-        Implementation: Service,
-    {
-        self.implementations.insert(
-            ServiceInfo::of::<Interface>(),
-            ServiceInfo::of::<Implementation>(),
-        )
+    /// Assigns the provider for a service type. Multiple providers can be
+    /// registered for a service.
+    #[allow(clippy::clippy::missing_panics_doc)]
+    pub fn provide<P: Provider>(&mut self, provider: P) {
+        self.providers
+            .entry(provider.result())
+            .or_insert_with(|| Some(Vec::new()))
+            .as_mut()
+            .unwrap() // Should never panic
+            .push(Box::new(provider));
     }
 
     /// Builds the injector.
     #[must_use]
     pub fn build(self) -> Injector {
-        Injector::new(self.providers, self.implementations)
+        Injector::new(self.providers)
     }
 }

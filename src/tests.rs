@@ -2,7 +2,7 @@
 
 use crate::{
     constant, interface, InjectError, InjectResult, Injector, IntoSingleton,
-    IntoTransient, ServiceInfo, Svc,
+    IntoTransient, ServiceInfo, Services, Svc, TypedProvider,
 };
 use std::sync::Mutex;
 
@@ -182,10 +182,7 @@ fn interfaces() {
 
     // Svc1
     let mut builder = Injector::builder();
-    builder.provide(Svc1::default.transient());
-    builder.provide(Svc2::new.transient());
-    builder.implement::<dyn Foo, Svc1>();
-    builder.provide(Svc4::new.transient());
+    builder.provide(Svc1::default.transient().with_interface::<dyn Foo>());
 
     let injector = builder.build();
     let svc: Svc<dyn Foo> = injector.get().unwrap();
@@ -195,28 +192,47 @@ fn interfaces() {
     // Svc2
     let mut builder = Injector::builder();
     builder.provide(Svc1::default.transient());
-    builder.provide(Svc2::new.transient());
-    builder.implement::<dyn Foo, Svc2>();
+    builder.provide(Svc2::new.transient().with_interface::<dyn Foo>());
 
     let injector = builder.build();
     let svc: Svc<dyn Foo> = injector.get().unwrap();
 
     assert_eq!(5, svc.bar());
+
+    // Svc4
+    let mut builder = Injector::builder();
+    builder.provide(Svc1::default.transient());
+    builder.provide(Svc2::new.transient().with_interface::<dyn Foo>());
+    builder.provide(Svc4::new.transient());
+
+    let injector = builder.build();
+    let svc: Svc<Svc4> = injector.get().unwrap();
+
+    assert_eq!(5, svc.foo.bar());
 }
 
 #[test]
-fn a() {
-    trait Foo: Send + Sync {}
-    interface!(Foo = [Bar]);
+fn multi_injection() {
+    #[cfg(feature = "rc")]
+    trait Foo {}
 
-    #[derive(Default)]
-    struct Bar;
-    impl Foo for Bar {}
+    #[cfg(feature = "arc")]
+    trait Foo: Send + Sync {}
+
+    impl Foo for Svc1 {}
+    impl Foo for Svc2 {}
+    impl Foo for Svc3 {}
+
+    interface!(Foo = [Svc1, Svc2, Svc3]);
 
     let mut builder = Injector::builder();
-    builder.provide(Bar::default.singleton());
-    builder.implement::<dyn Foo, Bar>();
+    builder.provide(Svc1::default.transient().with_interface::<dyn Foo>());
 
     let injector = builder.build();
-    let _bar: Svc<dyn Foo> = injector.get().unwrap();
+    let mut foos: Services<dyn Foo> = injector.get().unwrap();
+    assert_eq!(1, foos.len());
+
+    let foos: Vec<Svc<dyn Foo>> =
+        foos.get_all().collect::<InjectResult<_>>().unwrap();
+    assert_eq!(1, foos.len());
 }

@@ -1,4 +1,4 @@
-use crate::{InjectError, InjectResult, Injector, Service, ServiceInfo, Svc};
+use crate::{DynSvc, InjectError, InjectResult, Service, ServiceInfo, Svc};
 
 /// Indicates that a type can resolve services. The most basic implementation
 /// of this trait is that each sized service type can resolve itself. This is
@@ -8,33 +8,19 @@ use crate::{InjectError, InjectResult, Injector, Service, ServiceInfo, Svc};
 /// declared explicitly before use. This trait should usually be implemented
 /// by the `interface!` macro.
 pub trait Interface: Service {
-    /// Attempts to resolve a service which implements this interface. If an
-    /// implementation type is provided, this **should** attempt to return an
-    /// instance of that type. If it cannot, then this should return an error.
-    /// However, it is not unsound to return the wrong type. It is only unsafe
-    /// for code to rely on that exact type being returned in an unsafe manner.
-    fn resolve(
-        injector: &Injector,
-        implementation: Option<ServiceInfo>,
-    ) -> InjectResult<Svc<Self>>;
+    /// Downcasts a dynamic service pointer into a service pointer of this
+    /// interface type.
+    fn downcast(service: DynSvc) -> InjectResult<Svc<Self>>;
 }
 
 impl<T: Service> Interface for T {
-    fn resolve(
-        injector: &Injector,
-        implementation: Option<ServiceInfo>,
-    ) -> InjectResult<Svc<Self>> {
-        if let Some(implementation) = implementation {
-            let service_info = ServiceInfo::of::<Self>();
-            if service_info != implementation {
-                return Err(InjectError::InvalidImplementation {
-                    service_info,
-                    implementation,
-                });
-            }
-        }
-
-        injector.get_exact()
+    #[allow(clippy::map_err_ignore)]
+    fn downcast(service: DynSvc) -> InjectResult<Svc<Self>> {
+        service
+            .downcast()
+            .map_err(|_| InjectError::InvalidProvider {
+                service_info: ServiceInfo::of::<Self>(),
+            })
     }
 }
 
@@ -81,25 +67,17 @@ impl<T: Service> InterfaceFor<T> for T {}
 macro_rules! interface {
     ($trait:tt = [$($(#[$attr:meta])* $impl:ty),* $(,)?]) => {
         impl $crate::Interface for dyn $trait {
-            fn resolve(
-                injector: &$crate::Injector,
-                implementation: Option<$crate::ServiceInfo>,
-            ) -> $crate::InjectResult<$crate::Svc<Self>> {
-                match implementation {
-                    $(
-                        $(#[$attr])*
-                        Some(implementation) if implementation == $crate::ServiceInfo::of::<$impl>() => {
-                            Ok(injector.get::<$crate::Svc<$impl>>()? as $crate::Svc<Self>)
-                        }
-                    ),*
-                    Some(implementation) => {
-                        Err($crate::InjectError::InvalidImplementation {
-                            service_info: $crate::ServiceInfo::of::<Self>(),
-                            implementation,
-                        })
+            #[allow(unused_assignments)]
+            fn downcast(mut service: $crate::DynSvc) -> $crate::InjectResult<$crate::Svc<Self>> {
+                $(
+                    $(#[$attr])*
+                    match service.downcast::<$impl>() {
+                        Ok(downcasted) => return Ok(downcasted as $crate::Svc<Self>),
+                        Err(input) => service = input,
                     }
-                    None => Err($crate::InjectError::MissingProvider { service_info: $crate::ServiceInfo::of::<Self>() })
-                }
+                )*
+
+                Err($crate::InjectError::MissingProvider { service_info: $crate::ServiceInfo::of::<Self>() })
             }
         }
 
