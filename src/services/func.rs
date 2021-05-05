@@ -33,7 +33,6 @@ macro_rules! impl_provider_function {
         impl_provider_function!(@impl ());
     };
     ($first:ident $(, $rest:ident)*) => {
-        // Assert that $n type names are given
         impl_provider_function!(@impl ($first $(, $rest)*));
         impl_provider_function!($($rest),*);
     };
