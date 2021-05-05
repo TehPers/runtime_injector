@@ -38,7 +38,7 @@ impl Module {
 /// struct Bar();
 /// struct Baz(Vec<Svc<dyn Fooable>>);
 ///
-/// trait Fooable {}
+/// trait Fooable: Send + Sync {}
 /// impl Fooable for Foo {}
 /// impl Fooable for Bar {}
 /// interface! {
