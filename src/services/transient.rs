@@ -1,5 +1,6 @@
 use crate::{
-    InjectResult, Injector, Service, ServiceFactory, Svc, TypedProvider,
+    InjectResult, Injector, RequestInfo, Service, ServiceFactory, Svc,
+    TypedProvider,
 };
 use std::marker::PhantomData;
 
@@ -41,8 +42,9 @@ where
     fn provide_typed(
         &mut self,
         injector: &Injector,
+        request_info: RequestInfo,
     ) -> InjectResult<Svc<Self::Result>> {
-        self.func.invoke(injector)
+        self.func.invoke(injector, request_info)
     }
 }
 
