@@ -1,4 +1,4 @@
-use crate::{Injector, Provider, ProviderMap};
+use crate::{Injector, Module, Provider, ProviderMap};
 
 /// A builder for an [`Injector`].
 #[derive(Default)]
@@ -11,12 +11,30 @@ impl InjectorBuilder {
     /// registered for a service.
     #[allow(clippy::missing_panics_doc)]
     pub fn provide<P: Provider>(&mut self, provider: P) {
+        // Should never panic
         self.providers
             .entry(provider.result())
             .or_insert_with(|| Some(Vec::new()))
             .as_mut()
-            .unwrap() // Should never panic
+            .unwrap()
             .push(Box::new(provider));
+    }
+
+    /// Adds all the providers registered in a module. This may cause multiple
+    /// providers to be registered for the same service.
+    #[allow(clippy::clippy::missing_panics_doc)]
+    pub fn add_module(&mut self, module: Module) {
+        for (result, module_providers) in module.providers {
+            // Should never panic
+            let mut module_providers = module_providers.unwrap();
+            self.providers
+                .entry(result)
+                .and_modify(|providers| {
+                    // Should never panic
+                    providers.as_mut().unwrap().append(&mut module_providers)
+                })
+                .or_insert_with(|| Some(module_providers));
+        }
     }
 
     /// Builds the injector.

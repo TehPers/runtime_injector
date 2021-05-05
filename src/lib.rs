@@ -166,12 +166,14 @@ compile_error!(
 mod builder;
 mod injector;
 mod iter;
+mod module;
 mod requests;
 mod services;
 
 pub use builder::*;
 pub use injector::*;
 pub use iter::*;
+pub use module::*;
 pub use requests::*;
 pub use services::*;
 
