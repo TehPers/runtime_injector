@@ -240,22 +240,11 @@ fn multi_injection() {
 #[test]
 fn injector_returns_error_on_cycles() {
     struct Foo(Svc<Bar>);
-    impl Foo {
-        fn new(bar: Svc<Bar>) -> Self {
-            Foo(bar)
-        }
-    }
-
     struct Bar(Svc<Foo>);
-    impl Bar {
-        fn new(foo: Svc<Foo>) -> Self {
-            Bar(foo)
-        }
-    }
-
+    
     let mut builder = Injector::builder();
-    builder.provide(Foo::new.singleton());
-    builder.provide(Bar::new.singleton());
+    builder.provide(Foo.singleton());
+    builder.provide(Bar.singleton());
 
     let injector = builder.build();
     match injector.get::<Svc<Foo>>() {
