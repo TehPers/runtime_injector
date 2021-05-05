@@ -2,7 +2,7 @@
 
 use crate::{
     constant, interface, InjectError, InjectResult, Injector, IntoSingleton,
-    IntoTransient, ServiceInfo, Services, Svc, TypedProvider,
+    IntoTransient, RequestInfo, ServiceInfo, Services, Svc, TypedProvider,
 };
 use std::sync::Mutex;
 
@@ -240,22 +240,11 @@ fn multi_injection() {
 #[test]
 fn injector_returns_error_on_cycles() {
     struct Foo(Svc<Bar>);
-    impl Foo {
-        fn new(bar: Svc<Bar>) -> Self {
-            Foo(bar)
-        }
-    }
-
     struct Bar(Svc<Foo>);
-    impl Bar {
-        fn new(foo: Svc<Foo>) -> Self {
-            Bar(foo)
-        }
-    }
-
+    
     let mut builder = Injector::builder();
-    builder.provide(Foo::new.singleton());
-    builder.provide(Bar::new.singleton());
+    builder.provide(Foo.singleton());
+    builder.provide(Bar.singleton());
 
     let injector = builder.build();
     match injector.get::<Svc<Foo>>() {
@@ -271,4 +260,25 @@ fn injector_returns_error_on_cycles() {
         Ok(_) => panic!("somehow created a Foo with a cyclic dependency"),
         Err(error) => Err(error).unwrap(),
     }
+}
+
+#[test]
+fn request_info_has_correct_path() {
+    struct Foo(Svc<Bar>, RequestInfo);
+    struct Bar(RequestInfo);
+
+    let mut builder = Injector::builder();
+    builder.provide(Foo.transient());
+    builder.provide(Bar.transient());
+
+    let injector = builder.build();
+    let bar: Svc<Bar> = injector.get().unwrap();
+    let foo: Svc<Foo> = injector.get().unwrap();
+
+    assert_eq!(&[ServiceInfo::of::<Bar>()], bar.0.service_path());
+    assert_eq!(&[ServiceInfo::of::<Foo>()], foo.1.service_path());
+    assert_eq!(
+        &[ServiceInfo::of::<Foo>(), ServiceInfo::of::<Bar>()],
+        foo.0 .0.service_path()
+    );
 }

@@ -1,8 +1,8 @@
 use std::marker::PhantomData;
 
 use crate::{
-    DynSvc, InjectResult, Injector, Interface, InterfaceFor, Service,
-    ServiceInfo, Svc,
+    DynSvc, InjectResult, Injector, Interface, InterfaceFor, RequestInfo,
+    Service, ServiceInfo, Svc,
 };
 
 /// Weakly typed service provider. Given an injector, this will provide an
@@ -14,7 +14,11 @@ pub trait Provider: Service {
     fn result(&self) -> ServiceInfo;
 
     /// Provides an instance of the service.
-    fn provide(&mut self, injector: &Injector) -> InjectResult<DynSvc>;
+    fn provide(
+        &mut self,
+        injector: &Injector,
+        request_info: RequestInfo,
+    ) -> InjectResult<DynSvc>;
 }
 
 impl<T> Provider for T
@@ -25,8 +29,12 @@ where
         ServiceInfo::of::<T::Result>()
     }
 
-    fn provide(&mut self, injector: &Injector) -> InjectResult<DynSvc> {
-        let result = self.provide_typed(injector)?;
+    fn provide(
+        &mut self,
+        injector: &Injector,
+        request_info: RequestInfo,
+    ) -> InjectResult<DynSvc> {
+        let result = self.provide_typed(injector, request_info)?;
         Ok(result as DynSvc)
     }
 }
@@ -41,7 +49,7 @@ where
 /// # Example
 ///
 /// ```
-/// use runtime_injector::{TypedProvider, Injector, InjectResult, Svc};
+/// use runtime_injector::{TypedProvider, Injector, InjectResult, Svc, RequestInfo};
 ///
 /// struct Foo;
 ///
@@ -49,7 +57,11 @@ where
 /// impl TypedProvider for FooProvider {
 ///     type Result = Foo;
 ///
-///     fn provide_typed(&mut self, _injector: &Injector) -> InjectResult<Svc<Self::Result>> {
+///     fn provide_typed(
+///         &mut self,
+///         _injector: &Injector,
+///         _request_info: RequestInfo
+///     ) -> InjectResult<Svc<Self::Result>> {
 ///         Ok(Svc::new(Foo))
 ///     }
 /// }
@@ -69,6 +81,7 @@ pub trait TypedProvider: Sized + Provider {
     fn provide_typed(
         &mut self,
         injector: &Injector,
+        request_info: RequestInfo,
     ) -> InjectResult<Svc<Self::Result>>;
 
     /// Provides this service as an implementation of a particular interface.
@@ -129,8 +142,12 @@ where
         ServiceInfo::of::<I>()
     }
 
-    fn provide(&mut self, injector: &Injector) -> InjectResult<DynSvc> {
-        let result = self.inner.provide(injector)?;
+    fn provide(
+        &mut self,
+        injector: &Injector,
+        request_info: RequestInfo,
+    ) -> InjectResult<DynSvc> {
+        let result = self.inner.provide(injector, request_info)?;
         Ok(result as DynSvc)
     }
 }

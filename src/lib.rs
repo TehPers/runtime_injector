@@ -126,6 +126,11 @@
 //!     // Note that we can register closures as providers as well
 //!     builder.provide((|_: Svc<dyn DataService>| "Hello, world!").singleton());
 //!     builder.provide((|_: Option<Svc<i32>>| 120.9).singleton());
+//!
+//!     // Simple tuple structs can be registered as services directly without
+//!     // defining any additional constructors
+//!     struct Foo(Svc<dyn DataService>);
+//!     builder.provide(Foo.singleton());
 //!     
 //!     // Let's choose to use the MockDataService as our data service
 //!     builder.provide(MockDataService::default.singleton().with_interface::<dyn DataService>());
@@ -161,13 +166,13 @@ compile_error!(
 mod builder;
 mod injector;
 mod iter;
-mod request;
+mod requests;
 mod services;
 
 pub use builder::*;
 pub use injector::*;
 pub use iter::*;
-pub use request::*;
+pub use requests::*;
 pub use services::*;
 
 #[cfg(test)]

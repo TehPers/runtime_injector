@@ -1,6 +1,6 @@
 use crate::{
-    InjectResult, InjectorBuilder, Interface, Provider, Request, ServiceInfo,
-    Services,
+    InjectResult, InjectorBuilder, Interface, Provider, Request, RequestInfo,
+    ServiceInfo, Services,
 };
 use std::collections::HashMap;
 
@@ -156,6 +156,8 @@ impl Injector {
     ///   much sense to request this directly from the injector itself, this
     ///   allows the injector to be requested as a dependency inside of
     ///   services (for instance, factories).
+    /// - [`RequestInfo`]: Requests information about the current request,
+    ///   including the current resolution path.
     ///
     /// See the [documentation for `Request`](Request) for more information on
     /// what can be requested.
@@ -230,25 +232,26 @@ impl Injector {
     ///
     /// Custom request types can also be used by implementing [`Request`].
     pub fn get<R: Request>(&self) -> InjectResult<R> {
-        R::request(self)
+        R::request(self, RequestInfo::new())
     }
 
     /// Gets implementations of a service from the container. This is
     /// equivalent to requesting [`Services<T>`] from [`Injector::get()`].
-    pub fn get_service<I: ?Sized + Interface>(
+    pub(crate) fn get_service<I: ?Sized + Interface>(
         &self,
+        request_info: RequestInfo,
     ) -> InjectResult<Services<I>> {
-        Services::new(self.clone(), self.provider_map.clone())
+        Services::new(self.clone(), self.provider_map.clone(), request_info)
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use core::panic;
-
     use crate::{
-        DynSvc, InjectError, InjectResult, Injector, Provider, ServiceInfo, Svc,
+        DynSvc, InjectError, InjectResult, Injector, Provider, RequestInfo,
+        ServiceInfo, Svc,
     };
+    use core::panic;
 
     #[test]
     fn get_exact_returns_error_on_invalid_provider() {
@@ -261,6 +264,7 @@ mod tests {
             fn provide(
                 &mut self,
                 _injector: &Injector,
+                _request_info: RequestInfo,
             ) -> InjectResult<DynSvc> {
                 Ok(Svc::new(1.2_f32))
             }

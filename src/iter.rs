@@ -1,6 +1,6 @@
 use crate::{
     InjectError, InjectResult, Injector, Interface, MapContainer,
-    MapContainerEx, Provider, ProviderMap, ServiceInfo, Svc,
+    MapContainerEx, Provider, ProviderMap, RequestInfo, ServiceInfo, Svc,
 };
 use std::marker::PhantomData;
 
@@ -49,6 +49,7 @@ use std::marker::PhantomData;
 pub struct Services<I: ?Sized + Interface> {
     injector: Injector,
     service_info: ServiceInfo,
+    request_info: RequestInfo,
     provider_map: MapContainer<ProviderMap>,
     providers: Option<Vec<Box<dyn Provider>>>,
     marker: PhantomData<fn() -> I>,
@@ -58,6 +59,7 @@ impl<I: ?Sized + Interface> Services<I> {
     pub(crate) fn new(
         injector: Injector,
         provider_map: MapContainer<ProviderMap>,
+        request_info: RequestInfo,
     ) -> InjectResult<Self> {
         let service_info = ServiceInfo::of::<I>();
         let providers = provider_map.with_inner_mut(|provider_map| {
@@ -76,6 +78,7 @@ impl<I: ?Sized + Interface> Services<I> {
         Ok(Services {
             injector,
             service_info,
+            request_info,
             provider_map,
             providers: Some(providers),
             marker: PhantomData,
@@ -89,6 +92,7 @@ impl<I: ?Sized + Interface> Services<I> {
         ServicesIter {
             providers: self.providers.as_mut().unwrap(), // Should never panic
             injector: &self.injector,
+            request_info: &self.request_info,
             index: 0,
             marker: PhantomData,
         }
@@ -187,6 +191,7 @@ impl<I: ?Sized + Interface> Drop for Services<I> {
 pub struct ServicesIter<'a, I: ?Sized + Interface> {
     providers: &'a mut Vec<Box<dyn Provider>>,
     injector: &'a Injector,
+    request_info: &'a RequestInfo,
     index: usize,
     marker: PhantomData<fn() -> I>,
 }
@@ -199,7 +204,9 @@ impl<'a, I: ?Sized + Interface> Iterator for ServicesIter<'a, I> {
             None => None,
             Some(provider) => {
                 self.index += 1;
-                let result = match provider.provide(self.injector) {
+                let result = match provider
+                    .provide(self.injector, self.request_info.clone())
+                {
                     Ok(result) => I::downcast(result),
                     Err(InjectError::CycleDetected { mut cycle, .. }) => {
                         let service_info = ServiceInfo::of::<I>();

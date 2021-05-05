@@ -1,4 +1,4 @@
-use crate::{InjectResult, Injector, Service, Svc, TypedProvider};
+use crate::{InjectResult, Injector, RequestInfo, Service, Svc, TypedProvider};
 
 /// A provider which returns a constant, predetermined value. Note that this is
 /// technically a singleton service in that it does not recreate the value each
@@ -32,6 +32,7 @@ where
     fn provide_typed(
         &mut self,
         _injector: &Injector,
+        _request_info: RequestInfo,
     ) -> InjectResult<Svc<Self::Result>> {
         Ok(self.result.clone())
     }
