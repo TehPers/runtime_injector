@@ -51,11 +51,11 @@ impl<I: ?Sized + Interface> Request for Svc<I> {
                 providers: services.len(),
             })
         } else {
-            let service = services.get_all().next().ok_or(
+            let service = services.get_all().next().transpose()?.ok_or(
                 InjectError::MissingProvider {
                     service_info: ServiceInfo::of::<I>(),
                 },
-            )??;
+            )?;
 
             Ok(service)
         }

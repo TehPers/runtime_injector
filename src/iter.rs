@@ -47,14 +47,41 @@ use std::marker::PhantomData;
 /// assert_eq!(2, counter);
 /// ```
 pub struct Services<I: ?Sized + Interface> {
-    pub(crate) injector: Injector,
-    pub(crate) service_info: ServiceInfo,
-    pub(crate) provider_map: MapContainer<ProviderMap>,
-    pub(crate) providers: Option<Vec<Box<dyn Provider>>>,
-    pub(crate) marker: PhantomData<fn() -> I>,
+    injector: Injector,
+    service_info: ServiceInfo,
+    provider_map: MapContainer<ProviderMap>,
+    providers: Option<Vec<Box<dyn Provider>>>,
+    marker: PhantomData<fn() -> I>,
 }
 
 impl<I: ?Sized + Interface> Services<I> {
+    pub(crate) fn new(
+        injector: Injector,
+        provider_map: MapContainer<ProviderMap>,
+    ) -> InjectResult<Self> {
+        let service_info = ServiceInfo::of::<I>();
+        let providers = provider_map.with_inner_mut(|provider_map| {
+            Ok(provider_map
+                .get_mut(&service_info)
+                .map(|providers| {
+                    providers.take().ok_or(InjectError::CycleDetected {
+                        service_info,
+                        cycle: vec![service_info],
+                    })
+                })
+                .transpose()?
+                .unwrap_or_else(Vec::new))
+        })?;
+
+        Ok(Services {
+            injector,
+            service_info,
+            provider_map,
+            providers: Some(providers),
+            marker: PhantomData,
+        })
+    }
+
     /// Lazily gets all the implementations of this interface. Each service
     /// will be requested on demand rather than all at once.
     #[allow(clippy::missing_panics_doc)]

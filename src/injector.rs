@@ -1,8 +1,8 @@
 use crate::{
-    InjectError, InjectResult, InjectorBuilder, Interface, Provider, Request,
-    ServiceInfo, Services,
+    InjectResult, InjectorBuilder, Interface, Provider, Request, ServiceInfo,
+    Services,
 };
-use std::{collections::HashMap, marker::PhantomData};
+use std::collections::HashMap;
 
 pub(crate) type ProviderMap =
     HashMap<ServiceInfo, Option<Vec<Box<dyn Provider>>>>;
@@ -233,31 +233,12 @@ impl Injector {
         R::request(self)
     }
 
-    /// Gets implementations of a service from the container.
+    /// Gets implementations of a service from the container. This is
+    /// equivalent to requesting [`Services<T>`] from [`Injector::get()`].
     pub fn get_service<I: ?Sized + Interface>(
         &self,
     ) -> InjectResult<Services<I>> {
-        let service_info = ServiceInfo::of::<I>();
-        let providers = self.provider_map.with_inner_mut(|provider_map| {
-            Ok(provider_map
-                .get_mut(&service_info)
-                .map(|providers| {
-                    providers.take().ok_or(InjectError::CycleDetected {
-                        service_info,
-                        cycle: vec![service_info],
-                    })
-                })
-                .transpose()?
-                .unwrap_or_else(Vec::new))
-        })?;
-
-        Ok(Services {
-            injector: self.clone(),
-            marker: PhantomData,
-            service_info,
-            provider_map: self.provider_map.clone(),
-            providers: Some(providers),
-        })
+        Services::new(self.clone(), self.provider_map.clone())
     }
 }
 
