@@ -156,6 +156,8 @@ impl Injector {
     ///   much sense to request this directly from the injector itself, this
     ///   allows the injector to be requested as a dependency inside of
     ///   services (for instance, factories).
+    /// - [`RequestInfo`]: Requests information about the current request,
+    ///   including the current resolution path.
     ///
     /// See the [documentation for `Request`](Request) for more information on
     /// what can be requested.
