@@ -9,7 +9,7 @@ pub struct InjectorBuilder {
 impl InjectorBuilder {
     /// Assigns the provider for a service type. Multiple providers can be
     /// registered for a service.
-    #[allow(clippy::clippy::missing_panics_doc)]
+    #[allow(clippy::missing_panics_doc)]
     pub fn provide<P: Provider>(&mut self, provider: P) {
         self.providers
             .entry(provider.result())

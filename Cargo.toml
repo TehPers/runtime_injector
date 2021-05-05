@@ -15,8 +15,3 @@ exclude = [".github/*", ".vscode/*"]
 default = ["rc"]
 arc = [] # Svc<T> = Arc<T>
 rc = [] # Svc<T> = Rc<T>
-
-[dependencies.derive_more]
-version = "0.99"
-default-features = false
-features = ["display", "error"]

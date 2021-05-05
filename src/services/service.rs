@@ -1,7 +1,8 @@
-#![allow(clippy::used_underscore_binding)]
-
-use derive_more::{Display, Error};
-use std::any::{Any, TypeId};
+use std::{
+    any::{Any, TypeId},
+    error::Error,
+    fmt::{Display, Formatter},
+};
 
 #[cfg(feature = "rc")]
 macro_rules! feature_unique {
@@ -98,18 +99,15 @@ impl ServiceInfo {
 }
 
 /// An error that has occurred during creation of a service.
-#[derive(Debug, Display, Error)]
-#[display(fmt = "an error occurred during injection: {}")]
+#[derive(Debug)]
 pub enum InjectError {
     /// Failed to find a provider for the requested type.
-    #[display(fmt = "{} has no provider", "service_info.name()")]
     MissingProvider {
         /// The service that was requested.
         service_info: ServiceInfo,
     },
 
     /// A provider for a dependency of the requested service is missing.
-    #[display(fmt = "{} is missing a dependency", "service_info.name()")]
     MissingDependency {
         /// The service that was requested.
         service_info: ServiceInfo,
@@ -119,11 +117,6 @@ pub enum InjectError {
     },
 
     /// A cycle was detected during activation of a service.
-    #[display(
-        fmt = "a cycle was detected during activation of {} [{}]",
-        "service_info.name()",
-        "fmt_cycle(cycle)"
-    )]
     CycleDetected {
         /// The service that was requested.
         service_info: ServiceInfo,
@@ -134,11 +127,6 @@ pub enum InjectError {
     },
 
     /// The requested implementer is not valid for the requested service.
-    #[display(
-        fmt = "{} is not registered as an implementer of {}",
-        "implementation.name()",
-        "service_info.name()"
-    )]
     InvalidImplementation {
         /// The service that was requested.
         service_info: ServiceInfo,
@@ -148,17 +136,12 @@ pub enum InjectError {
     },
 
     /// The registered provider returned the wrong service type.
-    #[display(fmt = "the registered provider returned the wrong type")]
     InvalidProvider {
         /// The service that was requested.
         service_info: ServiceInfo,
     },
 
     /// The requested service has too many providers registered.
-    #[display(
-        fmt = "the requested service has {} providers registered (did you mean to request a Services<T> instead?)",
-        providers
-    )]
     MultipleProviders {
         /// The service that was requested.
         service_info: ServiceInfo,
@@ -168,11 +151,59 @@ pub enum InjectError {
 
     /// An unexpected error has occurred. This is usually caused by a bug in
     /// the library itself.
-    #[display(
-        fmt = "an unexpected error occurred (please report this): {}",
-        _0
-    )]
-    InternalError(#[error(ignore)] String),
+    InternalError(String),
+}
+
+impl Error for InjectError {}
+
+impl Display for InjectError {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "an error occurred during injection: ")?;
+        match self {
+            InjectError::MissingProvider { service_info } => {
+                write!(f, "{} has no provider", service_info.name())?
+            }
+            InjectError::MissingDependency {
+                service_info,
+                ..
+            } => write!(f, "{} is missing a dependency", service_info.name())?,
+            InjectError::CycleDetected {
+                service_info,
+                cycle,
+            } => write!(
+                f,
+                "a cycle was detected during activation of {} [{}]",
+                service_info.name(),
+                fmt_cycle(cycle)
+            )?,
+            InjectError::InvalidImplementation {
+                service_info,
+                implementation,
+            } => write!(
+                f,
+                "{} is not registered as an implementer of {}",
+                implementation.name(),
+                service_info.name()
+            )?,
+            InjectError::InvalidProvider { service_info } => {
+                write!(f, "the registered provider for {} returned the wrong type", service_info.name())?
+            }
+            InjectError::MultipleProviders {
+                service_info,
+                providers,
+            } => write!(
+                f,
+                "the requested service {} has {} providers registered (did you mean to request a Services<T> instead?)",
+                service_info.name(),
+                providers
+            )?,
+            InjectError::InternalError(message) => {
+                write!(f, "an unexpected error occurred (please report this): {}", message)?
+            },
+        };
+
+        Ok(())
+    }
 }
 
 fn fmt_cycle(cycle: &[ServiceInfo]) -> String {

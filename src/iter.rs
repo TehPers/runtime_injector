@@ -79,7 +79,7 @@ impl<I: ?Sized + Interface> Services<I> {
 
     /// Returns `true` if there are no implementations of this interface.
     #[must_use]
-    #[allow(clippy::clippy::missing_panics_doc)]
+    #[allow(clippy::missing_panics_doc)]
     pub fn is_empty(&self) -> bool {
         self.providers
             .as_ref()
