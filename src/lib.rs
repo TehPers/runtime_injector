@@ -94,7 +94,7 @@
 //! // Specify which types implement the DataService interface. This does not
 //! // determine the actual implementation used. It only registers the types as
 //! // possible implementations of the DataService interface.
-//! interface!(DataService = [ SqlDataService, MockDataService ]);
+//! interface!(DataService = [SqlDataService, MockDataService]);
 //!
 //! // Here's another service our application uses. This service depends on our
 //! // data service, however it doesn't care how that service is actually
