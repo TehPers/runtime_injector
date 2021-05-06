@@ -149,12 +149,27 @@ pub enum InjectError {
         providers: usize,
     },
 
+    /// An error occurred during activation of a service.
+    ActivationFailed {
+        /// The service that was requested.
+        service_info: ServiceInfo,
+        /// The error that was thrown during service initialization.
+        inner: Box<dyn Error + 'static>,
+    },
+
     /// An unexpected error has occurred. This is usually caused by a bug in
     /// the library itself.
     InternalError(String),
 }
 
-impl Error for InjectError {}
+impl Error for InjectError {
+    fn source(&self) -> Option<&(dyn Error + 'static)> {
+        match self {
+            InjectError::ActivationFailed { inner, .. } => Some(inner.as_ref()),
+            _ => None,
+        }
+    }
+}
 
 impl Display for InjectError {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
@@ -197,6 +212,9 @@ impl Display for InjectError {
                 service_info.name(),
                 providers
             )?,
+            InjectError::ActivationFailed { service_info, .. } => {
+                write!(f, "an error occurred during activation of {}", service_info.name())?
+            },
             InjectError::InternalError(message) => {
                 write!(f, "an unexpected error occurred (please report this): {}", message)?
             },

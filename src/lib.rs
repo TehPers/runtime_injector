@@ -51,6 +51,14 @@
 //! Custom service providers can also be created by implementing the
 //! [`TypedProvider`] trait.
 //!
+//! # Fallible service factories
+//!
+//! Not all types can always be successfully created. Sometimes, creating an
+//! instance of a service might fail. Rather than panicking on error, it's
+//! possible to instead return a [`Result<T, E>`] from your constructors and
+//! inject the result as a [`Svc<T>`]. Read more in the [docs for
+//! `IntoFallible`](crate::IntoFallible).
+//!
 //! # Example
 //!
 //! ```

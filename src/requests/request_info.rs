@@ -76,7 +76,9 @@ impl RequestInfo {
     /// # Example
     ///
     /// ```
-    /// use runtime_injector::{Injector, IntoTransient, RequestInfo, ServiceInfo, Svc};
+    /// use runtime_injector::{
+    ///     Injector, IntoTransient, RequestInfo, ServiceInfo, Svc,
+    /// };
     ///
     /// struct Foo(pub Svc<Baz>);
     /// struct Bar(pub Svc<Baz>);
@@ -90,7 +92,7 @@ impl RequestInfo {
     ///             Some(root) if root == &ServiceInfo::of::<Bar>() => 2,
     ///             _ => 0,
     ///         };
-    ///         
+    ///
     ///         Baz(value)
     ///     }
     /// }
@@ -105,8 +107,8 @@ impl RequestInfo {
     /// let bar: Svc<Bar> = injector.get().unwrap();
     /// let baz: Svc<Baz> = injector.get().unwrap();
     ///
-    /// assert_eq!(1, foo.0.0);
-    /// assert_eq!(2, bar.0.0);
+    /// assert_eq!(1, foo.0 .0);
+    /// assert_eq!(2, bar.0 .0);
     /// assert_eq!(0, baz.0);
     /// ```
     #[must_use]

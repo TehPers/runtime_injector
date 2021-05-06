@@ -49,7 +49,9 @@ where
 /// # Example
 ///
 /// ```
-/// use runtime_injector::{TypedProvider, Injector, InjectResult, Svc, RequestInfo};
+/// use runtime_injector::{
+///     InjectResult, Injector, RequestInfo, Svc, TypedProvider,
+/// };
 ///
 /// struct Foo;
 ///
@@ -60,7 +62,7 @@ where
 ///     fn provide_typed(
 ///         &mut self,
 ///         _injector: &Injector,
-///         _request_info: RequestInfo
+///         _request_info: RequestInfo,
 ///     ) -> InjectResult<Svc<Self::Result>> {
 ///         Ok(Svc::new(Foo))
 ///     }
@@ -89,7 +91,9 @@ pub trait TypedProvider: Sized + Provider {
     /// instead be requested by its interface type.
     ///
     /// ```
-    /// use runtime_injector::{TypedProvider, Injector, IntoSingleton, InjectResult, Svc, interface};
+    /// use runtime_injector::{
+    ///     interface, InjectResult, Injector, IntoSingleton, Svc, TypedProvider,
+    /// };
     ///
     /// trait Fooable: Send + Sync {
     ///     fn bar(&self) {}

@@ -53,7 +53,7 @@ impl<T: Service> From<T> for ConstantProvider<T> {
 /// # Example
 ///
 /// ```
-/// use runtime_injector::{Injector, Svc, constant};
+/// use runtime_injector::{constant, Injector, Svc};
 ///
 /// let mut builder = Injector::builder();
 /// builder.provide(constant(8i32));
@@ -72,7 +72,7 @@ impl<T: Service> From<T> for ConstantProvider<T> {
 /// of a service you created:
 ///
 /// ```
-/// use runtime_injector::{Injector, Svc, constant, IntoTransient};
+/// use runtime_injector::{constant, Injector, IntoTransient, Svc};
 /// use std::sync::Mutex;
 ///
 /// struct Foo;

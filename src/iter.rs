@@ -16,7 +16,9 @@ use std::marker::PhantomData;
 /// activated on demand.
 ///
 /// ```
-/// use runtime_injector::{Injector, Services, Svc, IntoTransient, interface, TypedProvider};
+/// use runtime_injector::{
+///     interface, Injector, IntoTransient, Services, Svc, TypedProvider,
+/// };
 ///
 /// trait Fooable: Send + Sync {
 ///     fn baz(&self) {}
@@ -63,16 +65,16 @@ impl<I: ?Sized + Interface> Services<I> {
     ) -> InjectResult<Self> {
         let service_info = ServiceInfo::of::<I>();
         let providers = provider_map.with_inner_mut(|provider_map| {
-            Ok(provider_map
+            provider_map
                 .get_mut(&service_info)
                 .map(|providers| {
-                    providers.take().ok_or(InjectError::CycleDetected {
+                    providers.take().ok_or_else(|| InjectError::CycleDetected {
                         service_info,
                         cycle: vec![service_info],
                     })
                 })
                 .transpose()?
-                .unwrap_or_else(Vec::new))
+                .ok_or(InjectError::MissingProvider { service_info })
         })?;
 
         Ok(Services {
@@ -162,7 +164,7 @@ impl<I: ?Sized + Interface> Drop for Services<I> {
 /// activated on demand.
 ///
 /// ```
-/// use runtime_injector::{Injector, Services, Svc, IntoTransient, constant};
+/// use runtime_injector::{constant, Injector, IntoTransient, Services, Svc};
 /// use std::sync::Mutex;
 ///
 /// struct Foo;
