@@ -1,3 +1,5 @@
+use std::any::Any;
+
 use crate::{
     InjectResult, Injector, Request, RequestInfo, Service, ServiceInfo,
 };
@@ -21,7 +23,7 @@ use crate::{
 ///
 /// # Type parameters
 /// * `D` - Dependencies of this service as a tuple.
-pub trait ServiceFactory<D>: Service {
+pub trait ServiceFactory<D>: Any {
     /// The resulting service from invoking this service factory.
     type Result: Service;
 
@@ -44,7 +46,7 @@ macro_rules! impl_provider_function {
     (@impl ($($type_name:ident),*)) => {
         impl<F, R $(, $type_name)*> ServiceFactory<($($type_name,)*)> for F
         where
-            F: 'static + FnMut($($type_name),*) -> R,
+            F: Any + FnMut($($type_name),*) -> R,
             R: Service,
             $($type_name: Request,)*
         {
