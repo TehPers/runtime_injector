@@ -9,24 +9,26 @@ where
     D: Service,
     R: Service,
     E: Service + Error,
-    F: ServiceFactory<D, Result<R, E>>,
+    F: ServiceFactory<D, Result = Result<R, E>>,
 {
     inner: F,
     marker: PhantomData<fn(D) -> InjectResult<Result<R, E>>>,
 }
 
-impl<D, R, E, F> ServiceFactory<D, R> for FallibleServiceFactory<D, R, E, F>
+impl<D, R, E, F> ServiceFactory<D> for FallibleServiceFactory<D, R, E, F>
 where
     D: Service,
     R: Service,
     E: Service + Error,
-    F: ServiceFactory<D, Result<R, E>>,
+    F: ServiceFactory<D, Result = Result<R, E>>,
 {
+    type Result = R;
+
     fn invoke(
         &mut self,
         injector: &crate::Injector,
         request_info: crate::RequestInfo,
-    ) -> InjectResult<R> {
+    ) -> InjectResult<Self::Result> {
         let result = self.inner.invoke(injector, request_info)?;
         match result {
             Ok(result) => Ok(result),
@@ -46,8 +48,14 @@ where
     D: Service,
     R: Service,
     E: Service + Error,
-    F: ServiceFactory<D, Result<R, E>>,
+    F: ServiceFactory<D, Result = Result<R, E>>,
 {
+    /// Marks a service factory as being able to fail. On failure, an injection
+    /// error is returned during activation. On success, the service is
+    /// injected unwrapped from the result. In other words, a [`Result<T, E>`]
+    /// can be requested as a [`Svc<T>`](crate::Svc), however if the
+    /// constructor fails, an injection error is returned from the request.
+    ///
     /// # Example
     ///
     /// ```
@@ -96,7 +104,7 @@ where
     D: Service,
     R: Service,
     E: Service + Error,
-    F: ServiceFactory<D, Result<R, E>>,
+    F: ServiceFactory<D, Result = Result<R, E>>,
 {
     fn fallible(self) -> FallibleServiceFactory<D, R, E, F> {
         FallibleServiceFactory {

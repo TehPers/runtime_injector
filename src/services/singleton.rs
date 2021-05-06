@@ -10,23 +10,23 @@ use std::marker::PhantomData;
 pub struct SingletonProvider<D, R, F>
 where
     R: Service,
-    F: ServiceFactory<D, R>,
+    F: ServiceFactory<D, Result = R>,
 {
-    func: F,
+    factory: F,
     result: Option<Svc<R>>,
-    marker: PhantomData<fn(D) -> InjectResult<R>>,
+    marker: PhantomData<fn(D) -> R>,
 }
 
 impl<D, R, F> SingletonProvider<D, R, F>
 where
     R: Service,
-    F: ServiceFactory<D, R>,
+    F: ServiceFactory<D, Result = R>,
 {
     /// Creates a new [`SingletonProvider`] using a service factory.
     #[must_use]
     pub fn new(func: F) -> Self {
         SingletonProvider {
-            func,
+            factory: func,
             result: None,
             marker: PhantomData,
         }
@@ -35,9 +35,9 @@ where
 
 impl<D, R, F> TypedProvider for SingletonProvider<D, R, F>
 where
-    D: 'static,
+    D: Service,
     R: Service,
-    F: ServiceFactory<D, R> + Service,
+    F: ServiceFactory<D, Result = R> + Service,
 {
     type Result = R;
 
@@ -50,7 +50,7 @@ where
             return Ok(service.clone());
         }
 
-        let result = self.func.invoke(injector, request_info)?;
+        let result = self.factory.invoke(injector, request_info)?;
         let result = Svc::new(result);
         self.result = Some(result.clone());
         Ok(result)
@@ -62,7 +62,7 @@ where
 pub trait IntoSingleton<D, R, F>
 where
     R: Service,
-    F: ServiceFactory<D, R>,
+    F: ServiceFactory<D, Result = R>,
 {
     /// Creates a singleton provider. Singleton providers create their values
     /// only once (when first requested) and reuse that value for each future
@@ -92,7 +92,7 @@ where
 impl<D, R, F> IntoSingleton<D, R, F> for F
 where
     R: Service,
-    F: ServiceFactory<D, R>,
+    F: ServiceFactory<D, Result = R>,
 {
     fn singleton(self) -> SingletonProvider<D, R, F> {
         SingletonProvider::new(self)
@@ -102,7 +102,7 @@ where
 impl<D, R, F> From<F> for SingletonProvider<D, R, F>
 where
     R: Service,
-    F: ServiceFactory<D, R>,
+    F: ServiceFactory<D, Result = R>,
 {
     fn from(func: F) -> Self {
         func.singleton()
