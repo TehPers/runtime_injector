@@ -1,5 +1,5 @@
 use crate::{
-    InjectResult, Injector, Request, RequestInfo, Service, ServiceInfo, Svc,
+    InjectResult, Injector, Request, RequestInfo, Service, ServiceInfo,
 };
 
 /// A factory for creating instances of a service. All functions of arity 12 or
@@ -31,7 +31,7 @@ where
         &mut self,
         injector: &Injector,
         request_info: RequestInfo,
-    ) -> InjectResult<Svc<R>>;
+    ) -> InjectResult<R>;
 }
 
 macro_rules! impl_provider_function {
@@ -50,7 +50,7 @@ macro_rules! impl_provider_function {
             $($type_name: Request,)*
         {
             #[allow(unused_variables, unused_mut, unused_assignments, non_snake_case)]
-            fn invoke(&mut self, injector: &Injector, request_info: RequestInfo) -> InjectResult<Svc<R>> {
+            fn invoke(&mut self, injector: &Injector, request_info: RequestInfo) -> InjectResult<R> {
                 let request_info = request_info.with_request(ServiceInfo::of::<R>());
                 let result = self($(
                     match <$type_name as Request>::request(&injector, request_info.clone()) {
@@ -64,7 +64,7 @@ macro_rules! impl_provider_function {
                         Err(error) => return Err(error),
                     }
                 ),*);
-                Ok(Svc::new(result))
+                Ok(result)
             }
         }
     };

@@ -44,7 +44,8 @@ where
         injector: &Injector,
         request_info: RequestInfo,
     ) -> InjectResult<Svc<Self::Result>> {
-        self.func.invoke(injector, request_info)
+        let result = self.func.invoke(injector, request_info)?;
+        Ok(Svc::new(result))
     }
 }
 

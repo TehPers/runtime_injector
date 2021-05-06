@@ -51,6 +51,7 @@ where
         }
 
         let result = self.func.invoke(injector, request_info)?;
+        let result = Svc::new(result);
         self.result = Some(result.clone());
         Ok(result)
     }
