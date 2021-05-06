@@ -22,7 +22,7 @@ impl InjectorBuilder {
 
     /// Adds all the providers registered in a module. This may cause multiple
     /// providers to be registered for the same service.
-    #[allow(clippy::clippy::missing_panics_doc)]
+    #[allow(clippy::missing_panics_doc)]
     pub fn add_module(&mut self, module: Module) {
         for (result, module_providers) in module.providers {
             // Should never panic
