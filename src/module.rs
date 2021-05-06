@@ -32,7 +32,9 @@ impl Module {
 /// # Example
 ///
 /// ```
-/// use runtime_injector::{define_module, interface, IntoSingleton, IntoTransient, Svc, Injector};
+/// use runtime_injector::{
+///     define_module, interface, Injector, IntoSingleton, IntoTransient, Svc,
+/// };
 ///
 /// struct Foo();
 /// struct Bar();

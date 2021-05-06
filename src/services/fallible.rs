@@ -60,8 +60,7 @@ where
     ///
     /// ```
     /// use runtime_injector::{
-    ///     InjectError, InjectResult, Injector, IntoFallible, IntoTransient,
-    ///     Svc
+    ///     InjectError, InjectResult, Injector, IntoFallible, IntoTransient, Svc,
     /// };
     /// use std::{
     ///     error::Error,
@@ -90,7 +89,7 @@ where
     /// let injector = builder.build();
     /// let foo_result: InjectResult<Svc<Foo>> = injector.get();
     /// match foo_result {
-    ///     Err(InjectError::ActivationFailed { .. }) => {},
+    ///     Err(InjectError::ActivationFailed { .. }) => {}
     ///     Err(error) => Err(error).unwrap(),
     ///     _ => unreachable!("activation should have failed"),
     /// }

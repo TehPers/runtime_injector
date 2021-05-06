@@ -71,7 +71,7 @@ where
     /// # Example
     ///
     /// ```
-    /// use runtime_injector::{IntoSingleton, Injector, Svc};
+    /// use runtime_injector::{Injector, IntoSingleton, Svc};
     ///
     /// #[derive(Default)]
     /// struct Foo;

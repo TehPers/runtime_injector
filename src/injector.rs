@@ -78,7 +78,9 @@ pub(crate) use types::*;
 /// services on demand.
 ///
 /// ```
-/// use runtime_injector::{Injector, Svc, IntoTransient, IntoSingleton, constant, InjectResult};
+/// use runtime_injector::{
+///     constant, InjectResult, Injector, IntoSingleton, IntoTransient, Svc,
+/// };
 /// use std::sync::Mutex;
 ///
 /// struct FloatFactory(Injector);
@@ -170,7 +172,7 @@ impl Injector {
     /// pointer to the new instance (if one didn't exist already).
     ///
     /// ```
-    /// use runtime_injector::{Injector, Svc, IntoSingleton};
+    /// use runtime_injector::{Injector, IntoSingleton, Svc};
     ///
     /// #[derive(Default)]
     /// struct Bar;
@@ -189,7 +191,9 @@ impl Injector {
     /// pointer to a `Bar`, although the return type will be `Svc<dyn Foo>`.
     ///
     /// ```
-    /// use runtime_injector::{interface, Injector, Svc, IntoSingleton, TypedProvider};
+    /// use runtime_injector::{
+    ///     interface, Injector, IntoSingleton, Svc, TypedProvider,
+    /// };
     ///
     /// trait Foo: Send + Sync {}
     /// interface!(Foo = [Bar]);
@@ -209,7 +213,9 @@ impl Injector {
     /// service pointer to that service will fail:
     ///
     /// ```
-    /// use runtime_injector::{interface, Injector, Svc, IntoSingleton, TypedProvider};
+    /// use runtime_injector::{
+    ///     interface, Injector, IntoSingleton, Svc, TypedProvider,
+    /// };
     ///
     /// trait Foo: Send + Sync {}
     /// interface!(Foo = [Bar, Baz]);

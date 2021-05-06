@@ -16,7 +16,9 @@ use std::marker::PhantomData;
 /// activated on demand.
 ///
 /// ```
-/// use runtime_injector::{Injector, Services, Svc, IntoTransient, interface, TypedProvider};
+/// use runtime_injector::{
+///     interface, Injector, IntoTransient, Services, Svc, TypedProvider,
+/// };
 ///
 /// trait Fooable: Send + Sync {
 ///     fn baz(&self) {}
@@ -162,7 +164,7 @@ impl<I: ?Sized + Interface> Drop for Services<I> {
 /// activated on demand.
 ///
 /// ```
-/// use runtime_injector::{Injector, Services, Svc, IntoTransient, constant};
+/// use runtime_injector::{constant, Injector, IntoTransient, Services, Svc};
 /// use std::sync::Mutex;
 ///
 /// struct Foo;

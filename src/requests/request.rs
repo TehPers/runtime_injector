@@ -12,7 +12,7 @@ use crate::{
 /// factories, tuples can also be used to get around that limitation.
 ///
 /// ```
-/// use runtime_injector::{Injector, Svc, IntoSingleton};
+/// use runtime_injector::{Injector, IntoSingleton, Svc};
 ///
 /// struct Bar;
 /// struct Baz;

@@ -9,13 +9,15 @@ use crate::{
 /// are valid service requests and the return value is a valid service type.
 ///
 /// ```
-/// use runtime_injector::{ServiceFactory, Injector, Svc, RequestInfo};
+/// use runtime_injector::{Injector, RequestInfo, ServiceFactory, Svc};
 ///
 /// struct Foo;
 /// struct Bar;
 ///
 /// # fn _no_run() {
-/// fn factory(foo: Svc<Foo>) -> Bar { todo!() }
+/// fn factory(foo: Svc<Foo>) -> Bar {
+///     todo!()
+/// }
 /// let injector: Injector = todo!();
 /// factory.invoke(&injector, RequestInfo::new());
 /// # }

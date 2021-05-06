@@ -63,7 +63,7 @@ where
     /// # Example
     ///
     /// ```
-    /// use runtime_injector::{IntoTransient, Injector, Svc};
+    /// use runtime_injector::{Injector, IntoTransient, Svc};
     ///
     /// #[derive(Default)]
     /// struct Foo;
