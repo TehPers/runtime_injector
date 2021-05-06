@@ -1,5 +1,7 @@
+use std::any::Any;
+
 use crate::{
-    InjectResult, Injector, Request, RequestInfo, Service, ServiceInfo, Svc,
+    InjectResult, Injector, Request, RequestInfo, Service, ServiceInfo,
 };
 
 /// A factory for creating instances of a service. All functions of arity 12 or
@@ -21,17 +23,16 @@ use crate::{
 ///
 /// # Type parameters
 /// * `D` - Dependencies of this service as a tuple.
-/// * `R` - Resulting service from invoking this service factory.
-pub trait ServiceFactory<D, R>: 'static
-where
-    R: Service,
-{
+pub trait ServiceFactory<D>: Any {
+    /// The resulting service from invoking this service factory.
+    type Result: Service;
+
     /// Invokes this service factory, creating an instance of the service.
     fn invoke(
         &mut self,
         injector: &Injector,
         request_info: RequestInfo,
-    ) -> InjectResult<Svc<R>>;
+    ) -> InjectResult<Self::Result>;
 }
 
 macro_rules! impl_provider_function {
@@ -43,14 +44,20 @@ macro_rules! impl_provider_function {
         impl_provider_function!($($rest),*);
     };
     (@impl ($($type_name:ident),*)) => {
-        impl <F, R $(, $type_name)*> ServiceFactory<($($type_name,)*), R> for F
+        impl<F, R $(, $type_name)*> ServiceFactory<($($type_name,)*)> for F
         where
-            F: 'static + FnMut($($type_name),*) -> R,
+            F: Any + FnMut($($type_name),*) -> R,
             R: Service,
             $($type_name: Request,)*
         {
+            type Result = F::Output;
+
             #[allow(unused_variables, unused_mut, unused_assignments, non_snake_case)]
-            fn invoke(&mut self, injector: &Injector, request_info: RequestInfo) -> InjectResult<Svc<R>> {
+            fn invoke(
+                &mut self,
+                injector: &Injector,
+                request_info: RequestInfo
+            ) -> InjectResult<Self::Result> {
                 let request_info = request_info.with_request(ServiceInfo::of::<R>());
                 let result = self($(
                     match <$type_name as Request>::request(&injector, request_info.clone()) {
@@ -64,7 +71,7 @@ macro_rules! impl_provider_function {
                         Err(error) => return Err(error),
                     }
                 ),*);
-                Ok(Svc::new(result))
+                Ok(result)
             }
         }
     };

@@ -10,22 +10,22 @@ use std::marker::PhantomData;
 pub struct TransientProvider<D, R, F>
 where
     R: Service,
-    F: ServiceFactory<D, R>,
+    F: ServiceFactory<D, Result = R>,
 {
-    func: F,
+    factory: F,
     marker: PhantomData<fn(D) -> InjectResult<R>>,
 }
 
 impl<D, R, F> TransientProvider<D, R, F>
 where
     R: Service,
-    F: ServiceFactory<D, R>,
+    F: ServiceFactory<D, Result = R>,
 {
     /// Creates a new [`TransientProvider`] using a service factory.
     #[must_use]
     pub fn new(func: F) -> Self {
         TransientProvider {
-            func,
+            factory: func,
             marker: PhantomData,
         }
     }
@@ -33,9 +33,9 @@ where
 
 impl<D, R, F> TypedProvider for TransientProvider<D, R, F>
 where
-    D: 'static,
+    D: Service,
     R: Service,
-    F: ServiceFactory<D, R> + Service,
+    F: ServiceFactory<D, Result = R> + Service,
 {
     type Result = R;
 
@@ -44,7 +44,8 @@ where
         injector: &Injector,
         request_info: RequestInfo,
     ) -> InjectResult<Svc<Self::Result>> {
-        self.func.invoke(injector, request_info)
+        let result = self.factory.invoke(injector, request_info)?;
+        Ok(Svc::new(result))
     }
 }
 
@@ -53,7 +54,7 @@ where
 pub trait IntoTransient<D, R, F>
 where
     R: Service,
-    F: ServiceFactory<D, R>,
+    F: ServiceFactory<D, Result = R>,
 {
     /// Creates a transient provider. Transient providers create their values
     /// each time the service is requested and will never return service
@@ -83,7 +84,7 @@ where
 impl<D, R, F> IntoTransient<D, R, F> for F
 where
     R: Service,
-    F: ServiceFactory<D, R>,
+    F: ServiceFactory<D, Result = R>,
 {
     fn transient(self) -> TransientProvider<D, R, F> {
         TransientProvider::new(self)
@@ -93,7 +94,7 @@ where
 impl<D, R, F> From<F> for TransientProvider<D, R, F>
 where
     R: Service,
-    F: ServiceFactory<D, R>,
+    F: ServiceFactory<D, Result = R>,
 {
     fn from(func: F) -> Self {
         func.transient()
