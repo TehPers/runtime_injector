@@ -246,7 +246,9 @@ impl Injector {
     /// # Example
     ///
     /// ```
-    /// use runtime_injector::{Request, Injector, Svc, RequestInfo, IntoTransient};
+    /// use runtime_injector::{
+    ///     Injector, IntoTransient, Request, RequestInfo, Svc,
+    /// };
     ///
     /// struct Foo(String);
     /// impl Foo {

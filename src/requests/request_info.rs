@@ -51,16 +51,6 @@ impl RequestInfo {
         }
     }
 
-    /// Sets a request parameter for the request. If a parameter has already
-    /// been set to a value, then that value is returned.
-    pub fn insert_parameter(
-        &mut self,
-        key: &str,
-        value: impl RequestParameter,
-    ) -> Option<Box<dyn RequestParameter>> {
-        self.parameters.insert(key.to_owned(), Box::new(value))
-    }
-
     /// Creates a new child instance of [`RequestInfo`] with the given service
     /// appended to the end of the request path.
     #[must_use]
@@ -116,9 +106,37 @@ impl RequestInfo {
         &self.service_path
     }
 
+    /// Sets the value request parameter for the request. If a parameter has
+    /// already been set to a value, then that value is returned.
+    pub fn insert_parameter(
+        &mut self,
+        key: &str,
+        value: impl RequestParameter,
+    ) -> Option<Box<dyn RequestParameter>> {
+        self.parameters.insert(key.to_owned(), Box::new(value))
+    }
+
+    /// Removes and returns the value of a parameter if it has been set.
+    pub fn remove_parameter(
+        &mut self,
+        key: &str,
+    ) -> Option<Box<dyn RequestParameter>> {
+        self.parameters.remove(key)
+    }
+
     /// Gets the value of a parameter if it has been set.
     pub fn get_parameter(&self, key: &str) -> Option<&dyn RequestParameter> {
         self.parameters.get(key).map(|parameter| parameter.as_ref())
+    }
+
+    /// Mutably gets the value of a parameter if it has been set.
+    pub fn get_parameter_mut(
+        &mut self,
+        key: &str,
+    ) -> Option<&mut dyn RequestParameter> {
+        self.parameters
+            .get_mut(key)
+            .map(|parameter| parameter.as_mut())
     }
 }
 
