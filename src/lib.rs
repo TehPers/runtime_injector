@@ -54,7 +54,10 @@
 //! # Example
 //!
 //! ```
-//! use runtime_injector::{interface, Injector, Svc, IntoSingleton, TypedProvider};
+//! use runtime_injector::{
+//!     define_module, Module, interface, Injector, Svc, IntoSingleton,
+//!     TypedProvider
+//! };
 //! use std::error::Error;
 //!
 //! // Some type that represents a user
@@ -91,7 +94,7 @@
 //! // Specify which types implement the DataService interface. This does not
 //! // determine the actual implementation used. It only registers the types as
 //! // possible implementations of the DataService interface.
-//! interface!(DataService = [ SqlDataService, MockDataService ]);
+//! interface!(DataService = [SqlDataService, MockDataService]);
 //!
 //! // Here's another service our application uses. This service depends on our
 //! // data service, however it doesn't care how that service is actually
@@ -123,18 +126,28 @@
 //!     let mut builder = Injector::builder();
 //!     builder.provide(UserService::new.singleton());
 //!
-//!     // Note that we can register closures as providers as well
-//!     builder.provide((|_: Svc<dyn DataService>| "Hello, world!").singleton());
-//!     builder.provide((|_: Option<Svc<i32>>| 120.9).singleton());
-//!
-//!     // Simple tuple structs can be registered as services directly without
-//!     // defining any additional constructors
 //!     struct Foo(Svc<dyn DataService>);
-//!     builder.provide(Foo.singleton());
 //!     
-//!     // Let's choose to use the MockDataService as our data service
-//!     builder.provide(MockDataService::default.singleton().with_interface::<dyn DataService>());
-//!     
+//!     // Modules can be defined via the define_module! macro
+//!     let module = define_module! {
+//!         services = [
+//!             // Simple tuple structs can be registered as services directly without
+//!             // defining any additional constructors
+//!             Foo.singleton(),
+//!             
+//!             // Note that we can register closures as providers as well
+//!             (|_: Svc<dyn DataService>| "Hello, world!").singleton(),
+//!             (|_: Option<Svc<i32>>| 120.9).singleton(),
+//!         ],
+//!         interfaces = {
+//!             // Let's choose to use the MockDataService as our data service
+//!             dyn DataService = [MockDataService::default.singleton()],
+//!         },
+//!     };
+//!
+//!     // Register the module with our injector
+//!     builder.add_module(module);
+//!
 //!     // Now that we've registered all our providers and implementations, we
 //!     // can start relying on our container to create our services for us!
 //!     let injector = builder.build();
@@ -166,12 +179,14 @@ compile_error!(
 mod builder;
 mod injector;
 mod iter;
+mod module;
 mod requests;
 mod services;
 
 pub use builder::*;
 pub use injector::*;
 pub use iter::*;
+pub use module::*;
 pub use requests::*;
 pub use services::*;
 
