@@ -1,4 +1,4 @@
-use crate::{ServiceInfo, RequestParameter};
+use crate::{RequestParameter, ServiceInfo};
 use std::{collections::HashMap, fmt::Debug};
 
 /// Information about an active request.
