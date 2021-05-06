@@ -232,7 +232,44 @@ impl Injector {
     ///
     /// Custom request types can also be used by implementing [`Request`].
     pub fn get<R: Request>(&self) -> InjectResult<R> {
-        R::request(self, RequestInfo::new())
+        self.get_with(RequestInfo::new())
+    }
+
+    /// Performs a request for a service with additional request information.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use runtime_injector::{Request, Injector, Svc, RequestInfo, IntoTransient};
+    ///
+    /// struct Foo(String);
+    /// impl Foo {
+    ///     fn new(request_info: RequestInfo) -> Self {
+    ///         let value = request_info
+    ///             .get_parameter("value")
+    ///             .unwrap()
+    ///             .downcast_ref::<String>()
+    ///             .unwrap()
+    ///             .clone();
+    ///         Foo(value)
+    ///     }
+    /// }
+    ///
+    /// let mut builder = Injector::builder();
+    /// builder.provide(Foo::new.transient());
+    ///
+    /// let injector = builder.build();
+    /// let mut request_info = RequestInfo::default();
+    /// request_info.insert_parameter("value", "foo".to_owned());
+    ///
+    /// let foo: Svc<Foo> = injector.get_with(request_info).unwrap();
+    /// assert_eq!("foo", foo.0);
+    /// ```
+    pub fn get_with<R: Request>(
+        &self,
+        request_info: RequestInfo,
+    ) -> InjectResult<R> {
+        R::request(self, request_info)
     }
 
     /// Gets implementations of a service from the container. This is

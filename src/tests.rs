@@ -241,7 +241,7 @@ fn multi_injection() {
 fn injector_returns_error_on_cycles() {
     struct Foo(Svc<Bar>);
     struct Bar(Svc<Foo>);
-    
+
     let mut builder = Injector::builder();
     builder.provide(Foo.singleton());
     builder.provide(Bar.singleton());

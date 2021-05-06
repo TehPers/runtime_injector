@@ -30,7 +30,7 @@ impl dyn RequestParameter {
 
 impl Clone for Box<dyn RequestParameter> {
     fn clone(&self) -> Self {
-        self.clone_dyn()
+        self.as_ref().clone_dyn()
     }
 }
 
@@ -116,9 +116,7 @@ impl RequestInfo {
 
     /// Gets the value of a parameter if it has been set.
     pub fn get_parameter(&self, key: &str) -> Option<&dyn RequestParameter> {
-        self.parameters
-            .get(key)
-            .map(|parameter| parameter.as_ref())
+        self.parameters.get(key).map(|parameter| parameter.as_ref())
     }
 }
 
