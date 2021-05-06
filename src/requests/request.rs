@@ -52,7 +52,7 @@ impl Request for RequestInfo {
 /// there is not exactly one implementation of the given interface.
 impl<I: ?Sized + Interface> Request for Svc<I> {
     fn request(injector: &Injector, info: RequestInfo) -> InjectResult<Self> {
-        let mut services: Services<I> = Request::request(&injector, info)?;
+        let mut services: Services<I> = injector.get_with(info)?;
         if services.len() > 1 {
             Err(InjectError::MultipleProviders {
                 service_info: ServiceInfo::of::<I>(),
@@ -82,7 +82,7 @@ impl<I: ?Sized + Interface> Request for Services<I> {
 /// the given interface, then this will return an empty [`Vec<T>`].
 impl<I: ?Sized + Interface> Request for Vec<Svc<I>> {
     fn request(injector: &Injector, info: RequestInfo) -> InjectResult<Self> {
-        let mut impls: Services<I> = Request::request(&injector, info)?;
+        let mut impls: Services<I> = injector.get_with(info)?;
         impls.get_all().collect()
     }
 }
@@ -92,7 +92,7 @@ impl<I: ?Sized + Interface> Request for Vec<Svc<I>> {
 /// there are multiple implementations of the given interface.
 impl<I: ?Sized + Interface> Request for Option<Svc<I>> {
     fn request(injector: &Injector, info: RequestInfo) -> InjectResult<Self> {
-        match Request::request(&injector, info) {
+        match injector.get_with(info) {
             Ok(response) => Ok(Some(response)),
             Err(InjectError::MissingProvider { .. }) => Ok(None),
             Err(error) => Err(error),
@@ -117,7 +117,7 @@ macro_rules! impl_tuple_request {
         {
             #[allow(unused_variables)]
             fn request(injector: &Injector, info: RequestInfo) -> InjectResult<Self> {
-                let result = ($(<$type_name as Request>::request(&injector, info.clone())?,)*);
+                let result = ($(injector.get_with::<$type_name>(info.clone())?,)*);
                 Ok(result)
             }
         }
