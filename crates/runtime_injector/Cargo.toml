@@ -12,6 +12,6 @@ readme = "README.md"
 exclude = []
 
 [features]
-default = ["rc"]
+default = ["arc"]
 arc = [] # Svc<T> = Arc<T>
 rc = [] # Svc<T> = Rc<T>

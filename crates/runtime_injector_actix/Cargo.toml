@@ -12,11 +12,22 @@ readme = "README.md"
 exclude = []
 
 [features]
-default = ["rc"]
-arc = ["runtime_injector/arc"]
-rc = ["runtime_injector/rc"]
+default = []
+arc = [] # Ignored - only "arc" is supported
+rc = [] # Ignored - only "arc" is supported
+
+[dependencies]
+actix-web = "3"
+futures-util = "0.3"
 
 [dependencies.runtime_injector]
 version = "0.2"
 path = "../runtime_injector"
 default_features = false
+features = ["arc"]
+
+[dev-dependencies]
+serde = { version = "1", features = ["derive"] }
+
+[[example]]
+name = "web_api"
