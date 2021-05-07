@@ -64,7 +64,11 @@ impl<R: Request> FromRequest for Injected<R> {
     fn from_request(req: &HttpRequest, _payload: &mut Payload) -> Self::Future {
         let injector: &Injector = match req.app_data() {
             Some(app_data) => app_data,
-            None => return err(ErrorInternalServerError("no injector is present in app_data")),
+            None => {
+                return err(ErrorInternalServerError(
+                    "no injector is present in app_data",
+                ))
+            }
         };
 
         let inner = match injector.get() {

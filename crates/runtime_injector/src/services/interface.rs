@@ -1,4 +1,6 @@
-use crate::{DynSvc, InjectError, InjectResult, Service, ServiceInfo, Svc};
+use crate::{
+    DynSvc, InjectError, InjectResult, OwnedDynSvc, Service, ServiceInfo, Svc,
+};
 
 /// Indicates that a type can resolve services. The most basic implementation
 /// of this trait is that each sized service type can resolve itself. This is
@@ -11,11 +13,22 @@ pub trait Interface: Service {
     /// Downcasts a dynamic service pointer into a service pointer of this
     /// interface type.
     fn downcast(service: DynSvc) -> InjectResult<Svc<Self>>;
+
+    /// Downcasts an owned dynamic service pointer into an owned service
+    /// pointer of this interface type.
+    fn downcast_owned(service: OwnedDynSvc) -> InjectResult<Box<Self>>;
 }
 
 impl<T: Service> Interface for T {
-    #[allow(clippy::map_err_ignore)]
     fn downcast(service: DynSvc) -> InjectResult<Svc<Self>> {
+        service
+            .downcast()
+            .map_err(|_| InjectError::InvalidProvider {
+                service_info: ServiceInfo::of::<Self>(),
+            })
+    }
+
+    fn downcast_owned(service: OwnedDynSvc) -> InjectResult<Box<Self>> {
         service
             .downcast()
             .map_err(|_| InjectError::InvalidProvider {
@@ -73,6 +86,19 @@ macro_rules! interface {
                     $(#[$attr])*
                     match service.downcast::<$impl>() {
                         Ok(downcasted) => return Ok(downcasted as $crate::Svc<Self>),
+                        Err(input) => service = input,
+                    }
+                )*
+
+                Err($crate::InjectError::MissingProvider { service_info: $crate::ServiceInfo::of::<Self>() })
+            }
+
+            #[allow(unused_assignments)]
+            fn downcast_owned(mut service: $crate::OwnedDynSvc) -> $crate::InjectResult<::std::boxed::Box<Self>> {
+                $(
+                    $(#[$attr])*
+                    match service.downcast::<$impl>() {
+                        Ok(downcasted) => return Ok(downcasted as ::std::boxed::Box<Self>),
                         Err(input) => service = input,
                     }
                 )*

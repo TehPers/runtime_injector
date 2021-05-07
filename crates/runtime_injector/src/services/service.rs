@@ -51,6 +51,18 @@ feature_unique!(
 
 feature_unique!(
     {
+        /// An owned service pointer holding an instance of `dyn Any`.
+    },
+    {
+        pub type OwnedDynSvc = Box<dyn Any>;
+    },
+    {
+        pub type OwnedDynSvc = Box<dyn Any + Send + Sync>;
+    }
+);
+
+feature_unique!(
+    {
         /// Implemented automatically on types that are capable of being a
         /// service.
     },
@@ -149,6 +161,12 @@ pub enum InjectError {
         providers: usize,
     },
 
+    /// The provider can't provide an owned variant of the requested service.
+    OwnedNotSupported {
+        /// The service that was requested.
+        service_info: ServiceInfo,
+    },
+
     /// An error occurred during activation of a service.
     ActivationFailed {
         /// The service that was requested.
@@ -211,6 +229,13 @@ impl Display for InjectError {
                 "the requested service {} has {} providers registered (did you mean to request a Services<T> instead?)",
                 service_info.name(),
                 providers
+            )?,
+            InjectError::OwnedNotSupported {
+                service_info
+            } => write!(
+                f,
+                "the registered provider can't provide an owned variant of {}",
+                service_info.name()
             )?,
             InjectError::ActivationFailed { service_info, .. } => {
                 write!(f, "an error occurred during activation of {}", service_info.name())?

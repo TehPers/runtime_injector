@@ -100,6 +100,20 @@ impl<I: ?Sized + Interface> Services<I> {
         }
     }
 
+    /// Lazily gets all the implementations of this interface as owned service
+    /// pointers. Each service will be requested on demand rather than all at
+    /// once. Not all providers can provide owned service pointers, so some
+    /// requests may fail.
+    pub fn get_all_owned(&mut self) -> OwnedServicesIter<'_, I> {
+        OwnedServicesIter {
+            providers: self.providers.as_mut().unwrap(), // Should never panic
+            injector: &self.injector,
+            request_info: &self.request_info,
+            index: 0,
+            marker: PhantomData,
+        }
+    }
+
     /// Gets the number of implementations of this interface.
     #[must_use]
     #[allow(clippy::missing_panics_doc)]
@@ -210,6 +224,74 @@ impl<'a, I: ?Sized + Interface> Iterator for ServicesIter<'a, I> {
                     .provide(self.injector, self.request_info.clone())
                 {
                     Ok(result) => I::downcast(result),
+                    Err(InjectError::CycleDetected { mut cycle, .. }) => {
+                        let service_info = ServiceInfo::of::<I>();
+                        cycle.push(service_info);
+                        Err(InjectError::CycleDetected {
+                            service_info,
+                            cycle,
+                        })
+                    }
+                    Err(error) => Err(error),
+                };
+
+                Some(result)
+            }
+        }
+    }
+}
+
+/// An iterator over all the implementations of an interface. Each service is
+/// activated on demand.
+///
+/// ```
+/// use runtime_injector::{constant, Injector, IntoTransient, Services, Svc};
+/// use std::sync::Mutex;
+///
+/// #[derive(Clone, Copy, PartialEq, Eq, Debug)]
+/// struct Foo(usize);
+///
+/// fn make_foo(counter: Svc<Mutex<usize>>) -> Foo {
+///     // Increment the counter to track how many Foos have been created
+///     let mut counter = counter.lock().unwrap();
+///     *counter += 1;
+///     Foo(*counter)
+/// }
+///
+/// let mut builder = Injector::builder();
+/// builder.provide(constant(Mutex::new(0usize)));
+/// builder.provide(make_foo.transient());
+///
+/// let injector = builder.build();
+/// let counter: Svc<Mutex<usize>> = injector.get().unwrap();
+/// let mut foos: Services<Foo> = injector.get().unwrap();
+///
+/// let mut iter = foos.get_all_owned();
+/// assert_eq!(0, *counter.lock().unwrap());
+/// assert_eq!(Foo(1), *iter.next().unwrap().unwrap());
+/// assert_eq!(1, *counter.lock().unwrap());
+/// assert!(iter.next().is_none());
+/// ```
+pub struct OwnedServicesIter<'a, I: ?Sized + Interface> {
+    providers: &'a mut Vec<Box<dyn Provider>>,
+    injector: &'a Injector,
+    request_info: &'a RequestInfo,
+    index: usize,
+    marker: PhantomData<fn() -> I>,
+}
+
+impl<'a, I: ?Sized + Interface> Iterator for OwnedServicesIter<'a, I> {
+    type Item = InjectResult<Box<I>>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        match self.providers.get_mut(self.index) {
+            None => None,
+            Some(provider) => {
+                self.index += 1;
+                let result = match provider
+                    .provide_owned(self.injector, self.request_info.clone())
+                {
+                    Ok(result) => I::downcast_owned(result),
                     Err(InjectError::CycleDetected { mut cycle, .. }) => {
                         let service_info = ServiceInfo::of::<I>();
                         cycle.push(service_info);
