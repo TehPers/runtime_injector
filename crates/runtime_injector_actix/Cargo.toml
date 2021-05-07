@@ -27,6 +27,3 @@ features = ["arc"]
 
 [dev-dependencies]
 serde = { version = "1", features = ["derive"] }
-
-[[example]]
-name = "web_api"
