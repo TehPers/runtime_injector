@@ -1,0 +1,22 @@
+[package]
+name = "runtime_injector_actix"
+version = "0.1.0"
+edition = "2018"
+authors = ["TehPers <tehperz@gmail.com>"]
+license = "MIT OR Apache-2.0"
+description = "Runtime dependency injection container for actix-web"
+repository = "https://github.com/TehPers/runtime_injector"
+# documentation = "https://docs.rs/runtime_injector_actix"
+keywords = ["dependency-injection", "di", "ioc", "actix", "web"]
+readme = "README.md"
+exclude = []
+
+[features]
+default = ["rc"]
+arc = ["runtime_injector/arc"]
+rc = ["runtime_injector/rc"]
+
+[dependencies.runtime_injector]
+version = "0.2"
+path = "../runtime_injector"
+default_features = false

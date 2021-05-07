@@ -1,17 +1,2 @@
-[package]
-name = "runtime_injector"
-version = "0.2.1"
-authors = ["TehPers <tehperz@gmail.com>"]
-edition = "2018"
-license = "MIT OR Apache-2.0"
-description = "Runtime dependency injection container"
-repository = "https://github.com/TehPers/runtime_injector"
-documentation = "https://docs.rs/runtime_injector"
-keywords = ["dependency-injection", "di", "ioc"]
-readme = "README.md"
-exclude = [".github/*", ".vscode/*"]
-
-[features]
-default = ["rc"]
-arc = [] # Svc<T> = Arc<T>
-rc = [] # Svc<T> = Rc<T>
+[workspace]
+members = ["crates/runtime_injector", "crates/runtime_injector_actix"]
