@@ -52,11 +52,11 @@ jobs:
       - uses: actions/checkout@v2
       - uses: dtolnay/rust-toolchain@clippy
       - run: >-
-        cargo clippy
-          -p ${{ matrix.package }}
-          --tests
-          --no-default-features
-          --features ${{ matrix.features }}
-          --
-          -D clippy::all
-          -D clippy::pedantic
+          cargo clippy
+            -p ${{ matrix.package }}
+            --tests
+            --no-default-features
+            --features ${{ matrix.features }}
+            --
+            -D clippy::all
+            -D clippy::pedantic
