@@ -5,7 +5,39 @@ use futures_util::future::{err, ok, Ready};
 use runtime_injector::{Injector, Request};
 use std::ops::Deref;
 
-/// An injected request.
+/// An injected request. Any request to the [`Injector`] can be injected by
+/// wrapping it in this type and providing it as a parameter to your request
+/// handler.
+///
+/// # Example
+///
+/// ```no_run
+/// use actix_web::{get, App, HttpResponse, HttpServer, Responder};
+/// use runtime_injector_actix::{
+///     constant, define_module, Injected, Injector, Svc,
+/// };
+///
+/// #[actix_web::main]
+/// async fn main() -> std::io::Result<()> {
+///     let mut builder = Injector::builder();
+///     builder.add_module(define_module! {
+///         services = [constant(4i32)],
+///     });
+///
+///     let injector = builder.build();
+///     HttpServer::new(move || {
+///         App::new().app_data(injector.clone()).service(index)
+///     })
+///     .bind(("127.0.0.1", 8080))?
+///     .run()
+///     .await
+/// }
+///
+/// #[get("/")]
+/// async fn index(my_service: Injected<Svc<i32>>) -> impl Responder {
+///     HttpResponse::Ok().body(format!("injected value is {}", *my_service))
+/// }
+/// ```
 #[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Debug, Hash)]
 pub struct Injected<R: Request>(R);
 
@@ -32,7 +64,7 @@ impl<R: Request> FromRequest for Injected<R> {
     fn from_request(req: &HttpRequest, _payload: &mut Payload) -> Self::Future {
         let injector: &Injector = match req.app_data() {
             Some(app_data) => app_data,
-            None => return err(ErrorInternalServerError("missing app_data")),
+            None => return err(ErrorInternalServerError("no injector is present in app_data")),
         };
 
         let inner = match injector.get() {

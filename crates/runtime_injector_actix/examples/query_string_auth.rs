@@ -1,8 +1,8 @@
 //! Spawns a web server that listens on localhost. A password must be sent to
 //! access the index page via the query string. Try connecting to
 //! <http://localhost:8080/> without any query strings, then connect with the
-//! string `?code=my_secret_password`. The authenticator service is injected
-//! via dependency injection into the request handler.
+//! query string `?code=my_secret_password`. The authenticator service is
+//! injected via dependency injection into the request handler.
 
 use actix_web::{
     get, web::Query, App, HttpRequest, HttpResponse, HttpServer, Responder,
