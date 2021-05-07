@@ -11,7 +11,7 @@ env:
 
 jobs:
   test:
-    name: Rust ${{ matrix.rust_version }} (${{ matrix.features }})
+    name: Rust ${{ matrix.rust_version }} (${{ matrix.package }} - ${{ matrix.features }})
     runs-on: ubuntu-latest
     strategy:
       fail-fast: true
@@ -38,7 +38,7 @@ jobs:
             --features ${{ matrix.features }}
 
   clippy:
-    name: Clippy (${{ matrix.features }})
+    name: Clippy (${{ matrix.package }} - ${{ matrix.features }})
     runs-on: ubuntu-latest
     strategy:
       fail-fast: true
