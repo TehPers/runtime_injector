@@ -104,6 +104,7 @@ impl<I: ?Sized + Interface> Services<I> {
     /// pointers. Each service will be requested on demand rather than all at
     /// once. Not all providers can provide owned service pointers, so some
     /// requests may fail.
+    #[allow(clippy::missing_panics_doc)]
     pub fn get_all_owned(&mut self) -> OwnedServicesIter<'_, I> {
         OwnedServicesIter {
             providers: self.providers.as_mut().unwrap(), // Should never panic
