@@ -144,16 +144,24 @@ impl Injector {
     ///   interface and creates an instance of the service if needed. If
     ///   multiple service providers are registered for that interface, then
     ///   returns an error instead.
-    /// - [`Option<Svc<T>>`]: Requests a service pointer to the given interface
-    ///   and create an instance of the service if needed. If no provider for
-    ///   that service is registered, then returns `Ok(None)` rather than
-    ///   returning an error. If multiple providers are registered, then
-    ///   instead returns an error.
+    /// - [`Box<T>`]: Requests an owned service pointer to the given interface
+    ///   and creates an instance of the service. Not all service providers can
+    ///   provide owned versions of their services, so this may fail for some
+    ///   services.
+    /// - [`Option<Svc<T>>`]/[`Option<Box<T>>`]: Requests a service pointer to
+    ///   the given interface and creates an instance of the service if needed.
+    ///   If no provider for that service is registered, then returns
+    ///   `Ok(None)` rather than returning an error. If multiple providers are
+    ///   registered, then instead returns an error. If an owned pointer is
+    ///   requested but the provider can't provide owned pointers, then returns
+    ///   an error.
+    /// - [`Vec<Svc<T>>`]/[`Vec<Box<T>>`]: Requests all the implementations of
+    ///   an interface. This will eagerly create the services as part of the
+    ///   request. If owned service pointers are requested and any providers
+    ///   can't provide owned pointers, then returns an error instead.
     /// - [`Services<T>`]: Requests all the implementations of an interface.
     ///   This will lazily create the services on demand. See the
     ///   [documentation for `Services<T>`](Services<T>) for more details.
-    /// - [`Vec<Svc<T>>`]: Requests all the implementations of an interface.
-    ///   This will eagerly create the services as part of the request.
     /// - [`Injector`]: Requests a clone of the injector. While it doesn't make
     ///   much sense to request this directly from the injector itself, this
     ///   allows the injector to be requested as a dependency inside of

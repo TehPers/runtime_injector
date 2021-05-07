@@ -1,8 +1,8 @@
 use std::marker::PhantomData;
 
 use crate::{
-    DynSvc, InjectResult, Injector, Interface, InterfaceFor, RequestInfo,
-    Service, ServiceInfo, Svc,
+    DynSvc, InjectError, InjectResult, Injector, Interface, InterfaceFor,
+    OwnedDynSvc, RequestInfo, Service, ServiceInfo, Svc,
 };
 
 /// Weakly typed service provider. Given an injector, this will provide an
@@ -19,6 +19,17 @@ pub trait Provider: Service {
         injector: &Injector,
         request_info: RequestInfo,
     ) -> InjectResult<DynSvc>;
+
+    /// Provides an owned instance of the service.
+    fn provide_owned(
+        &mut self,
+        _injector: &Injector,
+        _request_info: RequestInfo,
+    ) -> InjectResult<OwnedDynSvc> {
+        Err(InjectError::OwnedNotSupported {
+            service_info: self.result(),
+        })
+    }
 }
 
 impl<T> Provider for T
@@ -36,6 +47,15 @@ where
     ) -> InjectResult<DynSvc> {
         let result = self.provide_typed(injector, request_info)?;
         Ok(result as DynSvc)
+    }
+
+    fn provide_owned(
+        &mut self,
+        injector: &Injector,
+        request_info: RequestInfo,
+    ) -> InjectResult<OwnedDynSvc> {
+        let result = self.provide_owned_typed(injector, request_info)?;
+        Ok(result as OwnedDynSvc)
     }
 }
 
@@ -85,6 +105,18 @@ pub trait TypedProvider: Sized + Provider {
         injector: &Injector,
         request_info: RequestInfo,
     ) -> InjectResult<Svc<Self::Result>>;
+
+    /// Provides an owned instance of the service. Not all providers can
+    /// provide an owned variant of the service.
+    fn provide_owned_typed(
+        &mut self,
+        _injector: &Injector,
+        _request_info: RequestInfo,
+    ) -> InjectResult<Box<Self::Result>> {
+        Err(InjectError::OwnedNotSupported {
+            service_info: ServiceInfo::of::<Self::Result>(),
+        })
+    }
 
     /// Provides this service as an implementation of a particular interface.
     /// Rather than requesting this service with its concrete type, it can
@@ -151,7 +183,14 @@ where
         injector: &Injector,
         request_info: RequestInfo,
     ) -> InjectResult<DynSvc> {
-        let result = self.inner.provide(injector, request_info)?;
-        Ok(result as DynSvc)
+        self.inner.provide(injector, request_info)
+    }
+
+    fn provide_owned(
+        &mut self,
+        injector: &Injector,
+        request_info: RequestInfo,
+    ) -> InjectResult<OwnedDynSvc> {
+        self.inner.provide_owned(injector, request_info)
     }
 }

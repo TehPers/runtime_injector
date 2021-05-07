@@ -29,6 +29,33 @@ use crate::{
 ///
 /// let _injector = builder.build();
 /// ```
+///
+/// # Owned service requests
+///
+/// Some services can be provided directly via owned pointers ([`Box<I>`]).
+/// These services can be requested directly via [`Box<I>`], as a collection
+/// via [`Vec<Box<I>>`](Vec<I>), or lazily via an iterator via [`Services<I>`].
+///
+/// ```
+/// use runtime_injector::{define_module, Injector, IntoTransient, Svc};
+///
+/// #[derive(Default)]
+/// struct Foo;
+/// struct Bar(Box<Foo>);
+///
+/// let module = define_module! {
+///     services = [
+///         Foo::default.transient(),
+///         Bar.transient(),
+///     ]
+/// };
+///
+/// let mut builder = Injector::builder();
+/// builder.add_module(module);
+///
+/// let injector = builder.build();
+/// let _bar: Box<Bar> = injector.get().unwrap();
+/// ```
 pub trait Request: Sized {
     /// Performs the request to the injector.
     fn request(injector: &Injector, info: RequestInfo) -> InjectResult<Self>;
@@ -70,6 +97,29 @@ impl<I: ?Sized + Interface> Request for Svc<I> {
     }
 }
 
+/// Requests an owned pointer to a service or interface. Not all providers can
+/// provide owned pointers to their service, so this may fail where [`Svc<T>`]
+/// requests would otherwise succeed.
+impl<I: ?Sized + Interface> Request for Box<I> {
+    fn request(injector: &Injector, info: RequestInfo) -> InjectResult<Self> {
+        let mut services: Services<I> = injector.get_with(info)?;
+        if services.len() > 1 {
+            Err(InjectError::MultipleProviders {
+                service_info: ServiceInfo::of::<I>(),
+                providers: services.len(),
+            })
+        } else {
+            let service = services.get_all_owned().next().transpose()?.ok_or(
+                InjectError::MissingProvider {
+                    service_info: ServiceInfo::of::<I>(),
+                },
+            )?;
+
+            Ok(service)
+        }
+    }
+}
+
 /// Lazily requests all the implementations of an interface.
 impl<I: ?Sized + Interface> Request for Services<I> {
     fn request(injector: &Injector, info: RequestInfo) -> InjectResult<Self> {
@@ -87,10 +137,35 @@ impl<I: ?Sized + Interface> Request for Vec<Svc<I>> {
     }
 }
 
+/// Requests all the implementations of an interface as owned service pointers.
+/// If no provider is registered for the given interface, then this will return
+/// an empty [`Vec<T>`]. If any provider cannot provide an owned service
+/// pointer, then an error is returned instead.
+impl<I: ?Sized + Interface> Request for Vec<Box<I>> {
+    fn request(injector: &Injector, info: RequestInfo) -> InjectResult<Self> {
+        let mut impls: Services<I> = injector.get_with(info)?;
+        impls.get_all_owned().collect()
+    }
+}
+
 /// Tries to request a service pointer for a service or interface. If no
 /// provider has been registered for it, then returns `None`. This fails if
 /// there are multiple implementations of the given interface.
 impl<I: ?Sized + Interface> Request for Option<Svc<I>> {
+    fn request(injector: &Injector, info: RequestInfo) -> InjectResult<Self> {
+        match injector.get_with(info) {
+            Ok(response) => Ok(Some(response)),
+            Err(InjectError::MissingProvider { .. }) => Ok(None),
+            Err(error) => Err(error),
+        }
+    }
+}
+
+/// Tries to request an ownedservice pointer for a service or interface. If no
+/// provider has been registered for it, then returns `None`. This fails if
+/// there are multiple implementations of the given interface or if the service
+/// cannot be provided via an owned service pointer.
+impl<I: ?Sized + Interface> Request for Option<Box<I>> {
     fn request(injector: &Injector, info: RequestInfo) -> InjectResult<Self> {
         match injector.get_with(info) {
             Ok(response) => Ok(Some(response)),

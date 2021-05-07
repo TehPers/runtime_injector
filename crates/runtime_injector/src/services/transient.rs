@@ -47,6 +47,15 @@ where
         let result = self.factory.invoke(injector, request_info)?;
         Ok(Svc::new(result))
     }
+
+    fn provide_owned_typed(
+        &mut self,
+        injector: &Injector,
+        request_info: RequestInfo,
+    ) -> InjectResult<Box<Self::Result>> {
+        let result = self.factory.invoke(injector, request_info)?;
+        Ok(Box::new(result))
+    }
 }
 
 /// Defines a conversion into a transient provider. This trait is automatically
