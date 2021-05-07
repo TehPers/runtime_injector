@@ -1,15 +1,16 @@
 //! Runtime dependency injection.
 //!
-//! By default, services provided by the [`Injector`] are not thread-safe. This
-//! is because `Rc<T>` is used to hold instances of the services, which is
-//! not a thread-safe pointer type. This can be changed by disabling default
-//! features and enabling the "arc" feature:
+//! By default, services provided by the [`Injector`] are thread-safe. This is
+//! because [`Arc<T>`](std::sync::Arc) is used to hold instances of the
+//! services, which is a thread-safe pointer type. This can be changed to
+//! [`Rc<T>`](std::rc::Rc) by disabling default features and enabling the "rc"
+//! feature:
 //!
 //! ```text
 //! [dependencies.runtime_injector]
 //! version = "*" # Replace with the version you want to use
 //! default-features = false
-//! features = ["arc"]
+//! features = ["rc"]
 //! ```
 //!
 //! # Runtime dependency injection (rather than compile-time)
@@ -184,6 +185,7 @@ compile_error!(
     "The 'arc' and 'rc' features are mutually exclusive and cannot be enabled together."
 );
 
+mod any;
 mod builder;
 mod injector;
 mod iter;
@@ -191,6 +193,7 @@ mod module;
 mod requests;
 mod services;
 
+pub use any::*;
 pub use builder::*;
 pub use injector::*;
 pub use iter::*;

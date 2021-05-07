@@ -11,15 +11,17 @@ env:
 
 jobs:
   test:
-    name: Rust ${{ matrix.rust_version }} (${{ matrix.features }})
+    name: Rust ${{ matrix.rust_version }} (${{ matrix.package }} - ${{ matrix.features }})
     runs-on: ubuntu-latest
-
     strategy:
       fail-fast: true
       matrix:
-        rust_version: [stable, beta, nightly]
-        features: [rc, arc]
-
+        rust_version: [stable]
+        package: [runtime_injector, runtime_injector_actix]
+        features: [arc, rc]
+        exclude:
+          - package: runtime_injector_actix
+            features: rc
     steps:
       - name: Checkout
         uses: actions/checkout@v2
@@ -28,18 +30,33 @@ jobs:
         with:
           toolchain: ${{ matrix.rust_version }}
       - name: Run tests
-        run: cargo test --verbose --no-default-features --features ${{ matrix.features }}
+        run: >-
+          cargo test
+          -p ${{ matrix.package }}
+          --verbose
+          --no-default-features
+          --features ${{ matrix.features }}
 
   clippy:
-    name: Clippy (${{ matrix.features }})
+    name: Clippy (${{ matrix.package }} - ${{ matrix.features }})
     runs-on: ubuntu-latest
-
     strategy:
       fail-fast: true
       matrix:
-        features: [rc, arc]
-
+        package: [runtime_injector, runtime_injector_actix]
+        features: [arc, rc]
+        exclude:
+          - package: runtime_injector_actix
+            features: rc
     steps:
       - uses: actions/checkout@v2
       - uses: dtolnay/rust-toolchain@clippy
-      - run: cargo clippy --tests --no-default-features --features ${{ matrix.features }} -- -D clippy::all -D clippy::pedantic
+      - run: >-
+          cargo clippy
+          -p ${{ matrix.package }}
+          --tests
+          --no-default-features
+          --features ${{ matrix.features }}
+          --
+          -D clippy::all
+          -D clippy::pedantic

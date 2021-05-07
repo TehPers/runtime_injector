@@ -25,8 +25,8 @@ feature_unique!(
         /// A reference-counted pointer holding a service. The pointer type is
         /// determined by the feature flags passed to this crate.
         ///
-        /// - **rc**: Pointer type is `Rc<T>`
-        /// - **arc**: Pointer type is `Arc<T>`
+        /// - **rc**: Pointer type is [`Rc<T>`](std::rc::Rc)
+        /// - **arc**: Pointer type is [`Arc<T>`](std::sync::Arc) (default)
     },
     {
         pub type Svc<T> = std::rc::Rc<T>;
