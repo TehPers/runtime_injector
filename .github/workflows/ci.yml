@@ -32,10 +32,10 @@ jobs:
       - name: Run tests
         run: >-
           cargo test
-            -p ${{ matrix.package }}
-            --verbose
-            --no-default-features
-            --features ${{ matrix.features }}
+          -p ${{ matrix.package }}
+          --verbose
+          --no-default-features
+          --features ${{ matrix.features }}
 
   clippy:
     name: Clippy (${{ matrix.package }} - ${{ matrix.features }})
@@ -53,10 +53,10 @@ jobs:
       - uses: dtolnay/rust-toolchain@clippy
       - run: >-
           cargo clippy
-            -p ${{ matrix.package }}
-            --tests
-            --no-default-features
-            --features ${{ matrix.features }}
-            --
-            -D clippy::all
-            -D clippy::pedantic
+          -p ${{ matrix.package }}
+          --tests
+          --no-default-features
+          --features ${{ matrix.features }}
+          --
+          -D clippy::all
+          -D clippy::pedantic
