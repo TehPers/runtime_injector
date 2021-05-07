@@ -60,12 +60,20 @@
 //! inject the result as a [`Svc<T>`]. Read more in the [docs for
 //! `IntoFallible`](crate::IntoFallible).
 //!
+//! # Owned service pointers
+//!
+//! Sometimes, you don't need a reference-counted pointer to your dependency.
+//! If your dependency is a transient service, then it might make more sense
+//! to inject it as a [`Box<T>`] than clone it from a reference-counted service
+//! pointer. In these cases, you can request a [`Box<T>`] directly from the
+//! injector and avoid needing to clone your dependency entirely!
+//!
 //! # Example
 //!
 //! ```
 //! use runtime_injector::{
 //!     define_module, Module, interface, Injector, Svc, IntoSingleton,
-//!     TypedProvider
+//!     TypedProvider, IntoTransient
 //! };
 //! use std::error::Error;
 //!
@@ -146,7 +154,11 @@
 //!             
 //!             // Note that we can register closures as providers as well
 //!             (|_: Svc<dyn DataService>| "Hello, world!").singleton(),
-//!             (|_: Option<Svc<i32>>| 120.9).singleton(),
+//!             (|_: Option<Svc<i32>>| 120.9).transient(),
+//!
+//!             // Since we know our dependency is transient, we can request an
+//!             // owned pointer to it rather than a reference-counted pointer
+//!             (|value: Box<f32>| format!("{}", value)).transient(),
 //!         ],
 //!         interfaces = {
 //!             // Let's choose to use the MockDataService as our data service
