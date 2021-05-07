@@ -13,8 +13,7 @@ exclude = []
 
 [features]
 default = []
-arc = [] # Ignored - only "arc" is supported
-rc = [] # Ignored - only "arc" is supported
+arc = [] # Ignored, just used for CI
 
 [dependencies]
 actix-web = "3"
