@@ -92,18 +92,18 @@ impl RequestInfo {
     }
 
     /// Gets the value of a parameter if it has been set.
+    #[must_use]
     pub fn get_parameter(&self, key: &str) -> Option<&dyn RequestParameter> {
-        self.parameters.get(key).map(|parameter| parameter.as_ref())
+        self.parameters.get(key).map(AsRef::as_ref)
     }
 
     /// Mutably gets the value of a parameter if it has been set.
+    #[must_use]
     pub fn get_parameter_mut(
         &mut self,
         key: &str,
     ) -> Option<&mut dyn RequestParameter> {
-        self.parameters
-            .get_mut(key)
-            .map(|parameter| parameter.as_mut())
+        self.parameters.get_mut(key).map(AsMut::as_mut)
     }
 }
 

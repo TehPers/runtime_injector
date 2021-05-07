@@ -12,7 +12,7 @@ where
     F: ServiceFactory<D, Result = Result<R, E>>,
 {
     inner: F,
-    marker: PhantomData<fn(D) -> InjectResult<Result<R, E>>>,
+    marker: PhantomData<fn(D) -> Result<R, E>>,
 }
 
 impl<D, R, E, F> ServiceFactory<D> for FallibleServiceFactory<D, R, E, F>
