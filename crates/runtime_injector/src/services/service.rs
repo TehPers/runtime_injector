@@ -161,7 +161,8 @@ pub enum InjectError {
         providers: usize,
     },
 
-    /// The provider can't provide an owned variant of the requested service.
+    /// The registered provider can't provide an owned variant of the requested
+    /// service.
     OwnedNotSupported {
         /// The service that was requested.
         service_info: ServiceInfo,
