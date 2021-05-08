@@ -146,8 +146,14 @@
 //! That's quite a bit of code to setup even just a simple application with
 //! multiple target environments! This doesn't even include our business logic.
 //!
-//! What happens if we let something else create our services for us? Let's let
-//! an [`Injector`](crate::Injector) manage our services for us instead.
+//! ## Simplifying our code with runtime_injector
+//! 
+//! As our application grows, so does the number of helper functions we need to
+//! create to handle all the different implementations of our services. This
+//! quickly becomes ugly and unmaintainable. What happens if we let something
+//! else create our services for us instead? Let's let an
+//! [`Injector`](crate::Injector) manage our services for us to help us
+//! simplify our code and make it more maintainable.
 //!
 //! ```
 //! use runtime_injector::{
@@ -295,3 +301,20 @@
 //! testing. Instead, rather than relying on our helpers to create the right
 //! implementations for us, we're just asking for an implementation and letting
 //! our container handle the rest.
+//!
+//! Something else that you might notice is that we are able to rely on our
+//! container to create a single instance of our user database and provide that
+//! single instance whenever we need it. Not only can we rely on our injector
+//! to call our constructors for us, but we can also rely on it to manage the
+//! lifetimes of our services. This would normally be very difficult without a
+//! container to do it for you. For example, suppose you want to create a
+//! single instance of your user database throughout the entire lifetime of
+//! your application since you don't want to open unnecessary connections to
+//! your database. Rather than relying on a static variable to hold that
+//! instance, we can instead rely on our container to create and provide that
+//! instance when we need it. If we wanted to provide a new instance each time,
+//! we could configure our container to do that instead! Similarly, if we
+//! wanted to create a single instance of our service for every HTTP request
+//! that we get, that's possible as well by creating a custom provider. We have
+//! complete control over our services, yet we don't have any of the extra
+//! complexities that normally comes with that level of control.
