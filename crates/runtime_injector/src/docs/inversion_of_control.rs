@@ -152,7 +152,7 @@
 //! ```
 //! use runtime_injector::{
 //!     constant, define_module, interface, Injector, IntoSingleton,
-//!     IntoTransient, Svc,
+//!     IntoTransient, Svc, Service
 //! };
 //!
 //! #[derive(Clone, Debug)]
@@ -160,7 +160,13 @@
 //!     scopes: Vec<String>,
 //! }
 //!
-//! trait UserDatabase: Send + Sync {
+//! // We still want our services to be thread-safe. `Service` is a trait that
+//! // is automatically implemented for all `Send + Sync + 'static` types, so
+//! // we can use it here instead. Additionally, if we decide that we no longer
+//! // need to multi-thread this later, we can switch to the "rc" feature to
+//! // use `Rc` for our service pointers, and this trait will automatically be
+//! // implemented for all `'static` types instead, regardless of thread safety
+//! trait UserDatabase: Service {
 //!     fn get_user(&self, id: u32) -> User {
 //!         todo!()
 //!     }
@@ -181,7 +187,7 @@
 //! struct IntegrationUserDatabase(Svc<String>, Svc<IntegrationTestParameters>);
 //! impl UserDatabase for IntegrationUserDatabase {}
 //!
-//! trait UserAuthenticator: Send + Sync {
+//! trait UserAuthenticator: Service {
 //!     fn has_access(&self, user_id: u32, scope: &str) -> bool;
 //! }
 //!
