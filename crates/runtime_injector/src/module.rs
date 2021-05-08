@@ -39,12 +39,19 @@ impl Module {
 /// struct Foo();
 /// struct Bar();
 /// struct Baz(Vec<Svc<dyn Fooable>>);
+/// #[cfg(test)]
+/// struct Quux();
 ///
 /// trait Fooable: Send + Sync {}
 /// impl Fooable for Foo {}
 /// impl Fooable for Bar {}
 /// interface! {
-///     Fooable = [Foo, Bar]
+///     Fooable = [
+///         Foo,
+///         Bar,
+///         #[cfg(test)]
+///         Quux,
+///     ]
 /// };
 ///
 /// let module = define_module! {
@@ -57,6 +64,16 @@ impl Module {
 ///             Bar.singleton(),
 ///         ],
 ///     },
+///
+///     // If there are multiple interface or service definitions, they are
+///     // merged together. This means we can have providers registered only in
+///     // certain environments.
+///     #[cfg(test)]
+///     interfaces = {
+///         dyn Fooable = [
+///             Quux.singleton(),
+///         ],
+///     },
 /// };
 ///
 /// let mut builder = Injector::builder();
@@ -64,18 +81,28 @@ impl Module {
 ///
 /// let injector = builder.build();
 /// let baz: Svc<Baz> = injector.get().unwrap();
+///
+/// #[cfg(not(test))]
 /// assert_eq!(2, baz.0.len());
+/// #[cfg(test)]
+/// assert_eq!(3, baz.0.len());
 /// ```
 #[macro_export]
 macro_rules! define_module {
     {
-        $($key:tt = $value:tt),*
+        $(
+            $(#[$($attr:meta),*])*
+            $key:ident = $value:tt
+        ),*
         $(,)?
     } => {
         {
             #[allow(unused_mut)]
             let mut module = <$crate::Module as ::std::default::Default>::default();
-            $($crate::define_module!(@provide module, $key = $value);)*
+            $(
+                $(#[$($attr),*])*
+                $crate::define_module!(@provide module, $key = $value);
+            )*
             module
         }
     };
@@ -100,6 +127,6 @@ macro_rules! define_module {
     ) => {
         $(
             $($module.provide($crate::TypedProvider::with_interface::<$interface>($implementation));)*
-        ),*
+        )*
     };
 }
