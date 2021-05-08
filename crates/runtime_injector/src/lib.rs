@@ -1,10 +1,9 @@
 //! Runtime dependency injection.
 //!
-//! By default, services provided by the [`Injector`] are thread-safe. This is
-//! because [`Arc<T>`](std::sync::Arc) is used to hold instances of the
-//! services, which is a thread-safe pointer type. This can be changed to
-//! [`Rc<T>`](std::rc::Rc) by disabling default features and enabling the "rc"
-//! feature:
+//! By default, services provided by the [`Injector`] use thread-safe pointers.
+//! This is because [`Arc<T>`](std::sync::Arc) is used to hold instances of the
+//! services. This can be changed to [`Rc<T>`](std::rc::Rc) by disabling
+//! default features and enabling the "rc" feature:
 //!
 //! ```text
 //! [dependencies.runtime_injector]
@@ -12,6 +11,10 @@
 //! default-features = false
 //! features = ["rc"]
 //! ```
+//! 
+//! If you are unfamiliar with dependency injection, then you may want to read
+//! about how a container can help
+//! [simplify your application](crate::docs::inversion_of_control).
 //!
 //! # Runtime dependency injection (rather than compile-time)
 //!
@@ -212,6 +215,8 @@ pub use iter::*;
 pub use module::*;
 pub use requests::*;
 pub use services::*;
+
+pub mod docs;
 
 #[cfg(test)]
 mod tests;
