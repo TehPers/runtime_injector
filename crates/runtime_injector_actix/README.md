@@ -13,7 +13,7 @@ Create your injector, then add it as app data to your application:
 ```rust
 #[actix::main]
 async fn main() -> std::io::Result<()> {
-    // Define a module so the 
+    // Define a module so the container knows what to inject
     let module = define_module! {
         #[cfg(not(test))]
         services = [
@@ -29,11 +29,12 @@ async fn main() -> std::io::Result<()> {
         },
     };
 
+    // Configure and build the container
     let mut builder = Injector::builder();
     builder.add_module(module);
-
     let injector = builder.build();
 
+    // Now add it as app data to the application
     HttpServer::new(|| App::new().app_data(injector.clone()).service(index))
         .bind(("127.0.0.1", 8080))?
         .run()

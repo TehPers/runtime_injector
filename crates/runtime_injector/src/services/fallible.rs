@@ -42,7 +42,8 @@ where
 
 /// Defines a conversion into a fallible service factory. This trait is
 /// automatically implemented for all service factories that return a
-/// [`Result<T, E>`] with a type that implements [`Error`] + [`Service`].
+/// [`Result<T, E>`] with an error type that implements [`Error`] and
+/// [`Service`].
 pub trait IntoFallible<D, R, E, F>
 where
     D: Service,
