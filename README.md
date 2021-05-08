@@ -5,8 +5,6 @@
 
 This library provides a powerful, easy to use inversion-of-control (IoC) container with a focus on ergonomics and configurability.
 
-Sample code is available on the [docs].
-
 ## Getting started
 
 For using the library, check out the [docs].
@@ -26,10 +24,6 @@ cargo build -p runtime_injector --no-default-features --features rc
 ```
 
 Note that not all crates support the "rc" feature, so you will need to specify which crate you want to build.
-
-## Minimum supported Rust version
-
-As the library is still in development, the only supported Rust version is the most recent version of stable Rust. The library may work on older versions, but there is no guarantee.
 
 ## License
 
