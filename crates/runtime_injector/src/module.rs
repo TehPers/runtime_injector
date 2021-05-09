@@ -1,6 +1,5 @@
-use std::collections::HashMap;
-
 use crate::{Provider, ProviderMap, RequestParameter};
+use std::collections::HashMap;
 
 /// A collection of providers that can be added all at once to an
 /// [`InjectorBuilder`](crate::InjectorBuilder). Modules can be used to group
