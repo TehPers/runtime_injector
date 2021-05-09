@@ -1,8 +1,11 @@
 use crate::{RequestParameter, ServiceInfo};
-use std::{collections::HashMap, fmt::Debug};
+use std::{
+    collections::HashMap,
+    fmt::{Debug, Formatter},
+};
 
 /// Information about an active request.
-#[derive(Clone, Debug)]
+#[derive(Clone)]
 pub struct RequestInfo {
     service_path: Vec<ServiceInfo>,
     parameters: HashMap<String, Box<dyn RequestParameter>>,
@@ -118,5 +121,14 @@ impl RequestInfo {
 impl Default for RequestInfo {
     fn default() -> Self {
         RequestInfo::new()
+    }
+}
+
+impl Debug for RequestInfo {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        // TODO: maybe use finish_non_exhaustive when 1.53 hits stable
+        f.debug_struct("RequestInfo")
+            .field("service_path", &self.service_path)
+            .finish()
     }
 }

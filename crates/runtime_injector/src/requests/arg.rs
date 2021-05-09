@@ -25,9 +25,9 @@ use std::{
 /// let foo: Box<Foo> = injector.get().unwrap();
 /// assert_eq!(12, *foo.0);
 /// ```
-pub struct Arg<T: Service + AsAny + Clone + Debug>(T);
+pub struct Arg<T: Service + AsAny + Clone>(T);
 
-impl<T: Service + AsAny + Clone + Debug> Arg<T> {
+impl<T: Service + AsAny + Clone> Arg<T> {
     pub(crate) fn param_name(target: ServiceInfo) -> String {
         format!(
             "runtime_injector::Arg[target={:?},type={:?}]",
@@ -42,7 +42,7 @@ impl<T: Service + AsAny + Clone + Debug> Arg<T> {
     }
 }
 
-impl<T: Service + AsAny + Clone + Debug> Deref for Arg<T> {
+impl<T: Service + AsAny + Clone> Deref for Arg<T> {
     type Target = T;
 
     fn deref(&self) -> &Self::Target {
@@ -50,13 +50,13 @@ impl<T: Service + AsAny + Clone + Debug> Deref for Arg<T> {
     }
 }
 
-impl<T: Service + AsAny + Clone + Debug> DerefMut for Arg<T> {
+impl<T: Service + AsAny + Clone> DerefMut for Arg<T> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.0
     }
 }
 
-impl<T: Service + AsAny + Clone + Debug> Request for Arg<T> {
+impl<T: Service + AsAny + Clone> Request for Arg<T> {
     fn request(_injector: &Injector, info: RequestInfo) -> InjectResult<Self> {
         let parent_request = info.service_path().last().ok_or_else(|| {
             InjectError::ActivationFailed {
@@ -116,14 +116,14 @@ impl Display for ArgRequestError {
 /// Allows defining pre-defined arguments to services.
 pub trait WithArg {
     /// Adds an argument for a service. See the docs for [`Arg<T>`].
-    fn with_arg<S: Service, T: Service + AsAny + Clone + Debug>(
+    fn with_arg<S: Service, T: Service + AsAny + Clone>(
         &mut self,
         value: T,
     ) -> Option<Box<dyn RequestParameter>>;
 }
 
 impl WithArg for RequestInfo {
-    fn with_arg<S: Service, T: Service + AsAny + Clone + Debug>(
+    fn with_arg<S: Service, T: Service + AsAny + Clone>(
         &mut self,
         value: T,
     ) -> Option<Box<dyn RequestParameter>> {
@@ -135,7 +135,7 @@ impl WithArg for RequestInfo {
 }
 
 impl WithArg for InjectorBuilder {
-    fn with_arg<S: Service, T: Service + AsAny + Clone + Debug>(
+    fn with_arg<S: Service, T: Service + AsAny + Clone>(
         &mut self,
         value: T,
     ) -> Option<Box<dyn RequestParameter>> {
@@ -144,7 +144,7 @@ impl WithArg for InjectorBuilder {
 }
 
 impl WithArg for Module {
-    fn with_arg<S: Service, T: Service + AsAny + Clone + Debug>(
+    fn with_arg<S: Service, T: Service + AsAny + Clone>(
         &mut self,
         value: T,
     ) -> Option<Box<dyn RequestParameter>> {
