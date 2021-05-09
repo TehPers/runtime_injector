@@ -69,7 +69,7 @@ impl<T: Service> InterfaceFor<T> for T {}
 /// // Requests for `dyn Foo` can resolve to either `Bar` or, in a test run,
 /// // `MockBar`. Note that attributes are allowed on each of the listed types.
 /// interface! {
-///     Foo = [
+///     dyn Foo = [
 ///         Bar,
 ///         #[cfg(test)]
 ///         MockBar,
@@ -78,8 +78,8 @@ impl<T: Service> InterfaceFor<T> for T {}
 /// ```
 #[macro_export]
 macro_rules! interface {
-    {$trait:tt = [$($(#[$attr:meta])* $impl:ty),* $(,)?]} => {
-        impl $crate::Interface for dyn $trait {
+    {$interface:ty = [$($(#[$attr:meta])* $impl:ty),* $(,)?]} => {
+        impl $crate::Interface for $interface {
             #[allow(unused_assignments)]
             fn downcast(mut service: $crate::DynSvc) -> $crate::InjectResult<$crate::Svc<Self>> {
                 $(
@@ -109,7 +109,7 @@ macro_rules! interface {
 
         $(
             $(#[$attr])*
-            impl $crate::InterfaceFor<$impl> for dyn $trait {}
+            impl $crate::InterfaceFor<$impl> for $interface {}
         )*
     };
 }

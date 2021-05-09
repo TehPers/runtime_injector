@@ -220,7 +220,7 @@
 //! // implementations of a user database, we'll declare `UserDatabase` as
 //! // being an interface that supports those three types
 //! interface! {
-//!     UserDatabase = [
+//!     dyn UserDatabase = [
 //!         MockUserDatabase,
 //!         SqlUserDatabase,
 //!         IntegrationUserDatabase,
@@ -230,7 +230,7 @@
 //! // Similarly, we'll declare `UserAuthenticator` as being an interface that
 //! // supports both our database-backed authenticator and our mock one
 //! interface! {
-//!     UserAuthenticator = [
+//!     dyn UserAuthenticator = [
 //!         MockUserAuthenticator,
 //!         DatabaseUserAuthenticator,
 //!     ]

@@ -24,7 +24,7 @@ use std::marker::PhantomData;
 ///     fn baz(&self) {}
 /// }
 ///
-/// interface!(Fooable = [Foo, Bar]);
+/// interface!(dyn Fooable = [Foo, Bar]);
 ///
 /// #[derive(Default)]
 /// struct Foo;

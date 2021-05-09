@@ -131,7 +131,7 @@ pub trait TypedProvider: Sized + Provider {
     ///     fn bar(&self) {}
     /// }
     ///
-    /// interface!(Fooable = [Foo]);
+    /// interface!(dyn Fooable = [Foo]);
     ///
     /// #[derive(Default)]
     /// struct Foo;
