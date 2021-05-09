@@ -73,14 +73,22 @@ impl RequestInfo {
         &self.service_path
     }
 
-    /// Sets the value request parameter for the request. If a parameter has
-    /// already been set to a value, then that value is returned.
+    /// Sets the value of a request parameter for the request. If a parameter
+    /// has already been set to a value, then that value is returned.
     pub fn insert_parameter(
         &mut self,
         key: &str,
         value: impl RequestParameter,
     ) -> Option<Box<dyn RequestParameter>> {
-        self.parameters.insert(key.to_owned(), Box::new(value))
+        self.insert_parameter_boxed(key, Box::new(value))
+    }
+
+    pub(crate) fn insert_parameter_boxed(
+        &mut self,
+        key: &str,
+        value: Box<dyn RequestParameter>,
+    ) -> Option<Box<dyn RequestParameter>> {
+        self.parameters.insert(key.to_owned(), value)
     }
 
     /// Removes and returns the value of a parameter if it has been set.

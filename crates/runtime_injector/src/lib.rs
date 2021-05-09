@@ -11,7 +11,7 @@
 //! default-features = false
 //! features = ["rc"]
 //! ```
-//! 
+//!
 //! If you are unfamiliar with dependency injection, then you may want to read
 //! about how a container can help
 //! [simplify your application](crate::docs::inversion_of_control).

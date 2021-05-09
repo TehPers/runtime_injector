@@ -1,4 +1,6 @@
-use crate::{Provider, ProviderMap};
+use std::collections::HashMap;
+
+use crate::{Provider, ProviderMap, RequestParameter};
 
 /// A collection of providers that can be added all at once to an
 /// [`InjectorBuilder`](crate::InjectorBuilder). Modules can be used to group
@@ -10,6 +12,7 @@ use crate::{Provider, ProviderMap};
 #[derive(Default)]
 pub struct Module {
     pub(crate) providers: ProviderMap,
+    pub(crate) parameters: HashMap<String, Box<dyn RequestParameter>>,
 }
 
 impl Module {
@@ -25,6 +28,25 @@ impl Module {
             .unwrap()
             .push(Box::new(provider));
     }
+
+    /// Sets the of a value request parameter for requests made by the injector
+    /// this module is added to. If a parameter has already been set to a
+    /// value in this module, then that value is returned.
+    pub fn insert_parameter(
+        &mut self,
+        key: &str,
+        value: impl RequestParameter,
+    ) -> Option<Box<dyn RequestParameter>> {
+        self.parameters.insert(key.to_owned(), Box::new(value))
+    }
+
+    /// Removes and returns the value of a parameter if it has been set.
+    pub fn remove_parameter(
+        &mut self,
+        key: &str,
+    ) -> Option<Box<dyn RequestParameter>> {
+        self.parameters.remove(key)
+    }
 }
 
 /// Defines a new module using a domain specific language.
@@ -33,10 +55,11 @@ impl Module {
 ///
 /// ```
 /// use runtime_injector::{
-///     define_module, interface, Injector, IntoSingleton, IntoTransient, Svc,
+///     define_module, interface, Arg, Injector, IntoSingleton, IntoTransient,
+///     Svc,
 /// };
 ///
-/// struct Foo();
+/// struct Foo(Arg<i32>);
 /// struct Bar();
 /// struct Baz(Vec<Svc<dyn Fooable>>);
 /// #[cfg(test)]
@@ -63,6 +86,9 @@ impl Module {
 ///             Foo.singleton(),
 ///             Bar.singleton(),
 ///         ],
+///     },
+///     arguments = {
+///         Foo = [12i32],
 ///     },
 ///
 ///     // If there are multiple interface or service definitions, they are
@@ -101,7 +127,7 @@ macro_rules! define_module {
             let mut module = <$crate::Module as ::std::default::Default>::default();
             $(
                 $(#[$($attr),*])*
-                $crate::define_module!(@provide module, $key = $value);
+                $crate::define_module!(@provide &mut module, $key = $value);
             )*
             module
         }
@@ -127,6 +153,20 @@ macro_rules! define_module {
     ) => {
         $(
             $($module.provide($crate::TypedProvider::with_interface::<$interface>($implementation));)*
+        )*
+    };
+    (
+        @provide $module:expr,
+        arguments = {
+            $($service:ty = [
+                $($arg:expr),*
+                $(,)?
+            ]),*
+            $(,)?
+        }
+    ) => {
+        $(
+            $($crate::WithArg::with_arg::<$service, _>($module, $arg);)*
         )*
     };
 }
