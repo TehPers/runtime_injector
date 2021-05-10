@@ -1,8 +1,11 @@
 use crate::{RequestParameter, ServiceInfo};
-use std::{collections::HashMap, fmt::Debug};
+use std::{
+    collections::HashMap,
+    fmt::{Debug, Formatter},
+};
 
 /// Information about an active request.
-#[derive(Clone, Debug)]
+#[derive(Clone)]
 pub struct RequestInfo {
     service_path: Vec<ServiceInfo>,
     parameters: HashMap<String, Box<dyn RequestParameter>>,
@@ -73,14 +76,22 @@ impl RequestInfo {
         &self.service_path
     }
 
-    /// Sets the value request parameter for the request. If a parameter has
-    /// already been set to a value, then that value is returned.
+    /// Sets the value of a request parameter for the request. If a parameter
+    /// has already been set to a value, then that value is returned.
     pub fn insert_parameter(
         &mut self,
         key: &str,
         value: impl RequestParameter,
     ) -> Option<Box<dyn RequestParameter>> {
-        self.parameters.insert(key.to_owned(), Box::new(value))
+        self.insert_parameter_boxed(key, Box::new(value))
+    }
+
+    pub(crate) fn insert_parameter_boxed(
+        &mut self,
+        key: &str,
+        value: Box<dyn RequestParameter>,
+    ) -> Option<Box<dyn RequestParameter>> {
+        self.parameters.insert(key.to_owned(), value)
     }
 
     /// Removes and returns the value of a parameter if it has been set.
@@ -110,5 +121,14 @@ impl RequestInfo {
 impl Default for RequestInfo {
     fn default() -> Self {
         RequestInfo::new()
+    }
+}
+
+impl Debug for RequestInfo {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        // TODO: maybe use finish_non_exhaustive when 1.53 hits stable
+        f.debug_struct("RequestInfo")
+            .field("service_path", &self.service_path)
+            .finish()
     }
 }

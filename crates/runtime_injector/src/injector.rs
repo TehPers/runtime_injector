@@ -1,6 +1,6 @@
 use crate::{
     InjectResult, InjectorBuilder, Interface, Provider, Request, RequestInfo,
-    ServiceInfo, Services,
+    ServiceInfo, Services, Svc,
 };
 use std::collections::HashMap;
 
@@ -118,6 +118,7 @@ pub(crate) use types::*;
 #[derive(Clone)]
 pub struct Injector {
     provider_map: MapContainer<ProviderMap>,
+    root_request_info: Svc<RequestInfo>,
 }
 
 impl Injector {
@@ -131,9 +132,21 @@ impl Injector {
     /// Creates a new injector directly from its providers and implementations.
     /// Prefer [`Injector::builder()`] for creating new injectors instead.
     #[must_use]
+    #[deprecated(note = "this will be removed in 0.4", since = "0.3.1")]
     pub fn new(providers: ProviderMap) -> Self {
         Injector {
             provider_map: MapContainerEx::new(providers),
+            root_request_info: Svc::new(RequestInfo::default()),
+        }
+    }
+
+    pub(crate) fn new_from_parts(
+        providers: ProviderMap,
+        request_info: RequestInfo,
+    ) -> Self {
+        Injector {
+            provider_map: MapContainerEx::new(providers),
+            root_request_info: Svc::new(request_info),
         }
     }
 
@@ -246,7 +259,7 @@ impl Injector {
     ///
     /// Custom request types can also be used by implementing [`Request`].
     pub fn get<R: Request>(&self) -> InjectResult<R> {
-        self.get_with(RequestInfo::new())
+        self.get_with(self.root_request_info.as_ref().clone())
     }
 
     /// Performs a request for a service with additional request information.
