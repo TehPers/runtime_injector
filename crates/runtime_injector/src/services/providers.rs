@@ -124,10 +124,11 @@ pub trait TypedProvider: Sized + Provider {
     ///
     /// ```
     /// use runtime_injector::{
-    ///     interface, InjectResult, Injector, IntoSingleton, Svc, TypedProvider,
+    ///     interface, InjectResult, Injector, IntoSingleton, Service, Svc,
+    ///     TypedProvider,
     /// };
     ///
-    /// trait Fooable: Send + Sync {
+    /// trait Fooable: Service {
     ///     fn bar(&self) {}
     /// }
     ///
