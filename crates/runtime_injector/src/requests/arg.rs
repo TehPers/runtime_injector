@@ -31,8 +31,8 @@ impl<T: Service + AsAny + Clone> Arg<T> {
     pub(crate) fn param_name(target: ServiceInfo) -> String {
         format!(
             "runtime_injector::Arg[target={:?},type={:?}]",
-            target.name(),
-            ServiceInfo::of::<T>().name()
+            target.id(),
+            ServiceInfo::of::<T>().id()
         )
     }
 
@@ -69,7 +69,7 @@ impl<T: Service + AsAny + Clone> Request for Arg<T> {
         let param = info.get_parameter(&request_name).ok_or_else(|| {
             InjectError::ActivationFailed {
                 service_info: ServiceInfo::of::<Self>(),
-                inner: Box::new(ArgRequestError::NoParentRequest),
+                inner: Box::new(ArgRequestError::MissingParameter),
             }
         })?;
 
@@ -89,7 +89,7 @@ impl<T: Service + AsAny + Clone> Request for Arg<T> {
 pub enum ArgRequestError {
     /// The argument value was not provided.
     MissingParameter,
-    /// The argument value is the wrong type.
+    /// The argument value is the wrong type. This should never happen.
     ParameterTypeInvalid,
     /// There is no parent request.
     NoParentRequest,
@@ -152,5 +152,65 @@ impl WithArg for Module {
             &Arg::<T>::param_name(ServiceInfo::of::<S>()),
             value,
         )
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::{
+        define_module, Arg, ArgRequestError, InjectError, Injector,
+        IntoSingleton, ServiceInfo, Svc,
+    };
+
+    #[test]
+    fn request_fails_if_missing_arg() {
+        struct Foo(Arg<i32>);
+
+        let module = define_module! {
+            services = [Foo.singleton()],
+        };
+
+        let mut builder = Injector::builder();
+        builder.add_module(module);
+
+        let injector = builder.build();
+        match injector.get::<Svc<Foo>>() {
+            Ok(_) => unreachable!("request should have failed"),
+            Err(InjectError::ActivationFailed {
+                service_info,
+                inner,
+            }) => {
+                assert_eq!(ServiceInfo::of::<Arg<i32>>(), service_info);
+                let inner: &ArgRequestError =
+                    inner.downcast_ref().expect("failed to downcast error");
+                match inner {
+                    ArgRequestError::MissingParameter => {}
+                    inner @ _ => Err(inner).unwrap(),
+                }
+            }
+            Err(error) => Err(error).unwrap(),
+        }
+    }
+
+    #[test]
+    fn request_fails_if_arg_has_no_parent_request() {
+        let builder = Injector::builder();
+        let injector = builder.build();
+        match injector.get::<Arg<i32>>() {
+            Ok(_) => unreachable!("request should have failed"),
+            Err(InjectError::ActivationFailed {
+                service_info,
+                inner,
+            }) => {
+                assert_eq!(ServiceInfo::of::<Arg<i32>>(), service_info);
+                let inner: &ArgRequestError =
+                    inner.downcast_ref().expect("failed to downcast error");
+                match inner {
+                    ArgRequestError::NoParentRequest => {}
+                    inner @ _ => Err(inner).unwrap(),
+                }
+            }
+            Err(error) => Err(error).unwrap(),
+        }
     }
 }
