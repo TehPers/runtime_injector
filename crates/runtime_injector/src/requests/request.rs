@@ -5,7 +5,7 @@ use crate::{
 
 /// A request to an injector.
 ///
-/// # Grouping requests
+/// ## Grouping requests
 ///
 /// Requests can be grouped together by using tuples to make multiple requests
 /// at once. Since there is a limit of 12 supported parameters/dependencies for
@@ -30,7 +30,7 @@ use crate::{
 /// let _injector = builder.build();
 /// ```
 ///
-/// # Owned service requests
+/// ## Owned service requests
 ///
 /// Some services can be provided directly via owned pointers ([`Box<I>`]).
 /// These services can be requested directly via [`Box<I>`], as a collection

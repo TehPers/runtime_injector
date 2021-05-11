@@ -2,13 +2,25 @@ use crate::{
     DynSvc, InjectError, InjectResult, OwnedDynSvc, Service, ServiceInfo, Svc,
 };
 
-/// Indicates functionality that can be implemented. For example, each
-/// [`Sized`] [`Service`] type is an interface that implements itself. This
-/// is done by requesting its exact implementation of itself from the injector.
-/// However, the injector cannot provide exact implementations for dynamic
-/// types (`dyn Trait`). For this reason, any interfaces using traits must be
-/// declared explicitly before use. This trait should usually be implemented
-/// by the [`interface!`] macro in the same module the trait was declared in.
+/// Indicates functionality that can be implemented.
+/// 
+/// For example, each [`Sized`] [`Service`] type is an interface that
+/// implements itself. This is done by requesting instances of itself from the
+/// injector. However, the injector cannot provide instances of dynamic types
+/// (`dyn Trait`) automatically because they are unsized. For this reason, any
+/// interfaces using traits must be declared explicitly before use. This trait
+/// should usually be implemented by the [`interface!`] macro in the same
+/// module the trait was declared in.
+///
+/// Since implementations of interfaces must be services, interfaces should be
+/// declared with a supertrait of [`Service`]. This will ensure that the
+/// implementors can be cast to [`dyn Any`](std::any::Any), and with the "arc"
+/// feature enabled, those implementors are also [`Send`] + [`Sync`].
+/// Additionally, trait interfaces must be convertible to trait objects so they
+/// can be used behind service pointers. You can read more about trait objects
+/// [here](https://doc.rust-lang.org/book/ch17-02-trait-objects.html).
+///
+/// See the documentation for the [`interface!`] macro for more information.
 pub trait Interface: Service {
     /// Downcasts a dynamic service pointer into a service pointer of this
     /// interface type.
@@ -51,8 +63,9 @@ impl<T: Service> InterfaceFor<T> for T {}
 ///
 /// With the "arc" feature enabled, the trait must be a subtrait of [`Send`]
 /// and [`Sync`]. This is necessary to allow the service pointers to be
-/// downcasted. If the "rc" feature is enabled, this is not required. This can
-/// be done easily by making your interface a subtrait of [`Service`].
+/// downcasted. If the "rc" feature is enabled, this is not required.
+/// Additionally, instances of the trait must have a `'static` lifetime. This
+/// can be done easily by making your interface a subtrait of [`Service`].
 ///
 /// # Example
 /// ```

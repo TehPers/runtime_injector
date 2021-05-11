@@ -115,7 +115,7 @@ pub(crate) use types::*;
 /// assert_eq!(1.0, value1);
 /// assert_eq!(2.0, value2);
 /// ```
-#[derive(Clone)]
+#[derive(Clone, Default)]
 pub struct Injector {
     provider_map: MapContainer<ProviderMap>,
     root_request_info: Svc<RequestInfo>,
@@ -183,7 +183,8 @@ impl Injector {
     ///   including the current resolution path.
     ///
     /// See the [documentation for `Request`](Request) for more information on
-    /// what can be requested.
+    /// what can be requested. Custom request types can also be created by
+    /// implementing [`Request`] on your type.
     ///
     /// Requests to service pointers of sized types will attempt to use the
     /// registered provider to retrieve an instance of that service. For
@@ -205,7 +206,7 @@ impl Injector {
     /// let _bar: Svc<Bar> = injector.get().unwrap();
     /// ```
     ///
-    /// Requests to service pointers of `dyn Trait` interface types will
+    /// Requests for service pointers of `dyn Trait` interface types will
     /// instead request the implementation of that interface type. For example,
     /// if `dyn Foo`'s registered implementation is for the service type `Bar`,
     /// then a request for a service pointer of `dyn Foo` will return a service
@@ -231,7 +232,7 @@ impl Injector {
     /// ```
     ///
     /// If multiple providers for a service exist, then a request for a single
-    /// service pointer to that service will fail:
+    /// service pointer to that service will fail.
     ///
     /// ```
     /// use runtime_injector::{
@@ -256,15 +257,13 @@ impl Injector {
     /// let injector = builder.build();
     /// assert!(injector.get::<Svc<dyn Foo>>().is_err());
     /// ```
-    ///
-    /// Custom request types can also be used by implementing [`Request`].
     pub fn get<R: Request>(&self) -> InjectResult<R> {
         self.get_with(self.root_request_info.as_ref().clone())
     }
 
     /// Performs a request for a service with additional request information.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```
     /// use runtime_injector::{

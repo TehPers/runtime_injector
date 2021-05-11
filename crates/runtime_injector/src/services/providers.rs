@@ -122,6 +122,9 @@ pub trait TypedProvider: Sized + Provider {
     /// Rather than requesting this service with its concrete type, it can
     /// instead be requested by its interface type.
     ///
+    /// *Note: it cannot be requested with its concrete type once it has been
+    /// assigned an interface.*
+    ///
     /// ```
     /// use runtime_injector::{
     ///     interface, InjectResult, Injector, IntoSingleton, Service, Svc,

@@ -12,9 +12,15 @@
 //! features = ["rc"]
 //! ```
 //!
-//! If you are unfamiliar with dependency injection, then you may want to read
+//! ## Getting started
+//!
+//! If you are unfamiliar with dependency injection, then you may want to check
 //! about how a container can help
-//! [simplify your application](crate::docs::inversion_of_control).
+//! [simplify your application][ioc]. Otherwise,
+//! check out the [getting started guide][getting-started]
+//!
+//! [ioc]: crate::docs::inversion_of_control
+//! [getting-started]: crate::docs::getting_started
 //!
 //! ## Dependency injection at runtime (rather than compile-time)
 //!
