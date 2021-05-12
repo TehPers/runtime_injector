@@ -108,6 +108,8 @@ impl<R: Request> Factory<R> {
     }
 }
 
+/// Lazy request factory allowing requests to be made outside of service
+/// creation.
 impl<R: Request> Request for Factory<R> {
     fn request(injector: &Injector, info: &RequestInfo) -> InjectResult<Self> {
         Ok(Factory {

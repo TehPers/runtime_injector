@@ -56,6 +56,7 @@ impl<T: Service + AsAny + Clone> DerefMut for Arg<T> {
     }
 }
 
+/// Allows custom pre-defined values to be passed as arguments to services.
 impl<T: Service + AsAny + Clone> Request for Arg<T> {
     fn request(_injector: &Injector, info: &RequestInfo) -> InjectResult<Self> {
         let parent_request = info.service_path().last().ok_or_else(|| {
