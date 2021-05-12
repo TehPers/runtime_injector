@@ -22,7 +22,7 @@ use crate::{
 ///     todo!()
 /// }
 /// let injector: Injector = todo!();
-/// factory.invoke(&injector, RequestInfo::new());
+/// factory.invoke(&injector, &RequestInfo::new());
 /// # }
 /// ```
 pub trait ServiceFactory<D>: Service {

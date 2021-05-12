@@ -289,7 +289,7 @@ impl Injector {
     /// let mut request_info = RequestInfo::default();
     /// request_info.insert_parameter("value", "foo".to_owned());
     ///
-    /// let foo: Svc<Foo> = injector.get_with(request_info).unwrap();
+    /// let foo: Svc<Foo> = injector.get_with(&request_info).unwrap();
     /// assert_eq!("foo", foo.0);
     /// ```
     pub fn get_with<R: Request>(
