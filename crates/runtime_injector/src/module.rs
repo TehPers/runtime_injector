@@ -50,7 +50,7 @@ impl Module {
 
 /// Defines a new module using a domain specific language.
 ///
-/// # Example
+/// ## Example
 ///
 /// ```
 /// use runtime_injector::{

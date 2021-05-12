@@ -8,6 +8,11 @@ use crate::{
 /// less are automatically service factories if the arguments to that function
 /// are valid service requests and the return value is a valid service type.
 ///
+/// ## Type parameters
+/// * `D` - Tuple of this service's dependencies.
+///
+/// ## Example
+///
 /// ```
 /// use runtime_injector::{Injector, RequestInfo, ServiceFactory, Svc};
 ///
@@ -22,9 +27,6 @@ use crate::{
 /// factory.invoke(&injector, RequestInfo::new());
 /// # }
 /// ```
-///
-/// # Type parameters
-/// * `D` - Dependencies of this service as a tuple.
 pub trait ServiceFactory<D>: Any {
     /// The resulting service from invoking this service factory.
     type Result: Service;

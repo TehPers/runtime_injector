@@ -57,7 +57,7 @@ where
     /// can be requested as a [`Svc<T>`](crate::Svc), however if the
     /// constructor fails, an injection error is returned from the request.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```
     /// use runtime_injector::{

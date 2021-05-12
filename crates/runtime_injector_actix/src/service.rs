@@ -9,7 +9,7 @@ use std::ops::Deref;
 /// wrapping it in this type and providing it as a parameter to your request
 /// handler.
 ///
-/// # Example
+/// ## Example
 ///
 /// ```no_run
 /// use actix_web::{get, App, HttpResponse, HttpServer, Responder};

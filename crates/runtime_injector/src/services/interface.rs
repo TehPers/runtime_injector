@@ -3,7 +3,7 @@ use crate::{
 };
 
 /// Indicates functionality that can be implemented.
-/// 
+///
 /// For example, each [`Sized`] [`Service`] type is an interface that
 /// implements itself. This is done by requesting instances of itself from the
 /// injector. However, the injector cannot provide instances of dynamic types
@@ -68,7 +68,8 @@ impl<T: Service> InterfaceFor<T> for T {}
 /// Additionally, instances of the trait must have a `'static` lifetime. This
 /// can be done easily by making your interface a subtrait of [`Service`].
 ///
-/// # Example
+/// ## Example
+///
 /// ```
 /// use runtime_injector::{interface, Service};
 ///

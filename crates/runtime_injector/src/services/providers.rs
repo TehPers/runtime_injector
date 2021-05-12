@@ -70,7 +70,7 @@ where
 /// the strong type guarantees this provides. [`Provider`] is automatically
 /// implemented for all types which implement [`TypedProvider`].
 ///
-/// # Example
+/// ## Example
 ///
 /// ```
 /// use runtime_injector::{
@@ -128,6 +128,8 @@ pub trait TypedProvider: Sized + Provider {
     ///
     /// *Note: it cannot be requested with its concrete type once it has been
     /// assigned an interface.*
+    ///
+    /// ## Example
     ///
     /// ```
     /// use runtime_injector::{

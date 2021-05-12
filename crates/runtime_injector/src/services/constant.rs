@@ -51,7 +51,7 @@ impl<T: Service> From<T> for ConstantProvider<T> {
 /// the provider created with this function doesn't recreate the value each
 /// time it's requested, state can be stored in this manner.
 ///
-/// # Example
+/// ## Example
 ///
 /// ```
 /// use runtime_injector::{constant, Injector, Svc};
@@ -65,7 +65,7 @@ impl<T: Service> From<T> for ConstantProvider<T> {
 /// assert_eq!(8, *value);
 /// ```
 ///
-/// # Interior mutability
+/// ## Interior mutability
 ///
 /// One use case for constant values is to create a mutex to lock static,
 /// synchronized values that can be accessed from any service. For instance,

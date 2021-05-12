@@ -33,7 +33,7 @@ impl RequestInfo {
     /// Gets the current request path. This can be used to configure a service
     /// based on what it's being injected into.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```
     /// use runtime_injector::{
