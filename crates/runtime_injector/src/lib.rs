@@ -230,11 +230,13 @@
 //! ```
 
 #![forbid(unsafe_code)]
-#![warn(missing_docs, clippy::all, clippy::pedantic)]
+#![deny(clippy::all, clippy::pedantic)]
+#![warn(missing_docs)]
 #![allow(
     clippy::module_name_repetitions,
     clippy::missing_errors_doc,
-    clippy::needless_pass_by_value
+    clippy::doc_markdown,
+    clippy::needless_doctest_main
 )]
 
 #[cfg(not(any(feature = "arc", feature = "rc")))]

@@ -57,6 +57,7 @@ impl<R: Request> Factory<R> {
 
     /// Gets this factory's inner [`RequestInfo`]. This request info is used by
     /// all requests the factory makes.
+    #[must_use]
     pub fn request_info(&self) -> &RequestInfo {
         &self.request_info
     }
@@ -101,6 +102,7 @@ impl<R: Request> Factory<R> {
     /// assert_eq!(1, *foo1.0);
     /// assert_eq!(2, *foo2.0);
     /// ```
+    #[must_use]
     pub fn request_info_mut(&mut self) -> &mut RequestInfo {
         &mut self.request_info
     }
