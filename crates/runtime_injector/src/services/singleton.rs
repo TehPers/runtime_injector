@@ -68,7 +68,7 @@ where
     /// only once (when first requested) and reuse that value for each future
     /// request.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```
     /// use runtime_injector::{Injector, IntoSingleton, Svc};

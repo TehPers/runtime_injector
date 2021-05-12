@@ -44,13 +44,14 @@ impl<T: Service> From<T> for ConstantProvider<T> {
     }
 }
 
-/// Create a provider from a constant value. While the service itself will
-/// never be exposed through a mutable reference, if it supports interior
-/// mutability, its fields still can be mutated. Since the provider created
-/// with this function doesn't recreate the value each time it's requested,
-/// state can be stored in this manner.
+/// Create a provider from a constant value.
 ///
-/// # Example
+/// While the service itself will never be exposed through a mutable reference,
+/// if it supports interior mutability, its fields still can be mutated. Since
+/// the provider created with this function doesn't recreate the value each
+/// time it's requested, state can be stored in this manner.
+///
+/// ## Example
 ///
 /// ```
 /// use runtime_injector::{constant, Injector, Svc};
@@ -64,7 +65,7 @@ impl<T: Service> From<T> for ConstantProvider<T> {
 /// assert_eq!(8, *value);
 /// ```
 ///
-/// # Interior mutability
+/// ## Interior mutability
 ///
 /// One use case for constant values is to create a mutex to lock static,
 /// synchronized values that can be accessed from any service. For instance,

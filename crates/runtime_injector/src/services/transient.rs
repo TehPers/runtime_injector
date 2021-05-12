@@ -69,7 +69,7 @@ where
     /// each time the service is requested and will never return service
     /// pointers to the same instance more than once.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```
     /// use runtime_injector::{Injector, IntoTransient, Svc};

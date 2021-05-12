@@ -10,7 +10,7 @@ use std::{
 
 /// Allows custom pre-defined values to be passed as arguments to services.
 ///
-/// # Example
+/// ## Example
 ///
 /// ```
 /// use runtime_injector::{Arg, Injector, IntoTransient, WithArg};
