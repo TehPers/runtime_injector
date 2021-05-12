@@ -57,7 +57,7 @@ impl<T: Service + AsAny + Clone> DerefMut for Arg<T> {
 }
 
 impl<T: Service + AsAny + Clone> Request for Arg<T> {
-    fn request(_injector: &Injector, info: RequestInfo) -> InjectResult<Self> {
+    fn request(_injector: &Injector, info: &RequestInfo) -> InjectResult<Self> {
         let parent_request = info.service_path().last().ok_or_else(|| {
             InjectError::ActivationFailed {
                 service_info: ServiceInfo::of::<Self>(),

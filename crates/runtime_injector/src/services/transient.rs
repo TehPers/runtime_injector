@@ -42,7 +42,7 @@ where
     fn provide_typed(
         &mut self,
         injector: &Injector,
-        request_info: RequestInfo,
+        request_info: &RequestInfo,
     ) -> InjectResult<Svc<Self::Result>> {
         let result = self.factory.invoke(injector, request_info)?;
         Ok(Svc::new(result))
@@ -51,7 +51,7 @@ where
     fn provide_owned_typed(
         &mut self,
         injector: &Injector,
-        request_info: RequestInfo,
+        request_info: &RequestInfo,
     ) -> InjectResult<Box<Self::Result>> {
         let result = self.factory.invoke(injector, request_info)?;
         Ok(Box::new(result))

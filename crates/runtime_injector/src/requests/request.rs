@@ -58,27 +58,27 @@ use crate::{
 /// ```
 pub trait Request: Sized {
     /// Performs the request to the injector.
-    fn request(injector: &Injector, info: RequestInfo) -> InjectResult<Self>;
+    fn request(injector: &Injector, info: &RequestInfo) -> InjectResult<Self>;
 }
 
 /// Requests the injector used to resolve services.
 impl Request for Injector {
-    fn request(injector: &Injector, _info: RequestInfo) -> InjectResult<Self> {
+    fn request(injector: &Injector, _info: &RequestInfo) -> InjectResult<Self> {
         Ok(injector.clone())
     }
 }
 
 /// Requests the information about the current request.
 impl Request for RequestInfo {
-    fn request(_injector: &Injector, info: RequestInfo) -> InjectResult<Self> {
-        Ok(info)
+    fn request(_injector: &Injector, info: &RequestInfo) -> InjectResult<Self> {
+        Ok(info.clone())
     }
 }
 
 /// Requests a service pointer to a service or interface. This request fails if
 /// there is not exactly one implementation of the given interface.
 impl<I: ?Sized + Interface> Request for Svc<I> {
-    fn request(injector: &Injector, info: RequestInfo) -> InjectResult<Self> {
+    fn request(injector: &Injector, info: &RequestInfo) -> InjectResult<Self> {
         let mut services: Services<I> = injector.get_with(info)?;
         if services.len() > 1 {
             Err(InjectError::MultipleProviders {
@@ -101,7 +101,7 @@ impl<I: ?Sized + Interface> Request for Svc<I> {
 /// provide owned pointers to their service, so this may fail where [`Svc<T>`]
 /// requests would otherwise succeed.
 impl<I: ?Sized + Interface> Request for Box<I> {
-    fn request(injector: &Injector, info: RequestInfo) -> InjectResult<Self> {
+    fn request(injector: &Injector, info: &RequestInfo) -> InjectResult<Self> {
         let mut services: Services<I> = injector.get_with(info)?;
         if services.len() > 1 {
             Err(InjectError::MultipleProviders {
@@ -122,7 +122,7 @@ impl<I: ?Sized + Interface> Request for Box<I> {
 
 /// Lazily requests all the implementations of an interface.
 impl<I: ?Sized + Interface> Request for Services<I> {
-    fn request(injector: &Injector, info: RequestInfo) -> InjectResult<Self> {
+    fn request(injector: &Injector, info: &RequestInfo) -> InjectResult<Self> {
         injector.get_service(info)
     }
 }
@@ -131,7 +131,7 @@ impl<I: ?Sized + Interface> Request for Services<I> {
 /// will return at most one implementation. If no provider is registered for
 /// the given interface, then this will return an empty [`Vec<T>`].
 impl<I: ?Sized + Interface> Request for Vec<Svc<I>> {
-    fn request(injector: &Injector, info: RequestInfo) -> InjectResult<Self> {
+    fn request(injector: &Injector, info: &RequestInfo) -> InjectResult<Self> {
         let mut impls: Services<I> = injector.get_with(info)?;
         impls.get_all().collect()
     }
@@ -142,7 +142,7 @@ impl<I: ?Sized + Interface> Request for Vec<Svc<I>> {
 /// an empty [`Vec<T>`]. If any provider cannot provide an owned service
 /// pointer, then an error is returned instead.
 impl<I: ?Sized + Interface> Request for Vec<Box<I>> {
-    fn request(injector: &Injector, info: RequestInfo) -> InjectResult<Self> {
+    fn request(injector: &Injector, info: &RequestInfo) -> InjectResult<Self> {
         let mut impls: Services<I> = injector.get_with(info)?;
         impls.get_all_owned().collect()
     }
@@ -152,7 +152,7 @@ impl<I: ?Sized + Interface> Request for Vec<Box<I>> {
 /// provider has been registered for it, then returns `None`. This fails if
 /// there are multiple implementations of the given interface.
 impl<I: ?Sized + Interface> Request for Option<Svc<I>> {
-    fn request(injector: &Injector, info: RequestInfo) -> InjectResult<Self> {
+    fn request(injector: &Injector, info: &RequestInfo) -> InjectResult<Self> {
         match injector.get_with(info) {
             Ok(response) => Ok(Some(response)),
             Err(InjectError::MissingProvider { .. }) => Ok(None),
@@ -166,7 +166,7 @@ impl<I: ?Sized + Interface> Request for Option<Svc<I>> {
 /// there are multiple implementations of the given interface or if the service
 /// cannot be provided via an owned service pointer.
 impl<I: ?Sized + Interface> Request for Option<Box<I>> {
-    fn request(injector: &Injector, info: RequestInfo) -> InjectResult<Self> {
+    fn request(injector: &Injector, info: &RequestInfo) -> InjectResult<Self> {
         match injector.get_with(info) {
             Ok(response) => Ok(Some(response)),
             Err(InjectError::MissingProvider { .. }) => Ok(None),
@@ -191,8 +191,8 @@ macro_rules! impl_tuple_request {
             $($type_name: Request,)*
         {
             #[allow(unused_variables)]
-            fn request(injector: &Injector, info: RequestInfo) -> InjectResult<Self> {
-                let result = ($(injector.get_with::<$type_name>(info.clone())?,)*);
+            fn request(injector: &Injector, info: &RequestInfo) -> InjectResult<Self> {
+                let result = ($(injector.get_with::<$type_name>(info)?,)*);
                 Ok(result)
             }
         }

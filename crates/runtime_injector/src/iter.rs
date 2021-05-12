@@ -222,7 +222,7 @@ impl<'a, I: ?Sized + Interface> Iterator for ServicesIter<'a, I> {
             Some(provider) => {
                 self.index += 1;
                 let result = match provider
-                    .provide(self.injector, self.request_info.clone())
+                    .provide(self.injector, self.request_info)
                 {
                     Ok(result) => I::downcast(result),
                     Err(InjectError::CycleDetected { mut cycle, .. }) => {
@@ -290,7 +290,7 @@ impl<'a, I: ?Sized + Interface> Iterator for OwnedServicesIter<'a, I> {
             Some(provider) => {
                 self.index += 1;
                 let result = match provider
-                    .provide_owned(self.injector, self.request_info.clone())
+                    .provide_owned(self.injector, self.request_info)
                 {
                     Ok(result) => I::downcast_owned(result),
                     Err(InjectError::CycleDetected { mut cycle, .. }) => {

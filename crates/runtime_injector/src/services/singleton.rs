@@ -44,7 +44,7 @@ where
     fn provide_typed(
         &mut self,
         injector: &Injector,
-        request_info: RequestInfo,
+        request_info: &RequestInfo,
     ) -> InjectResult<Svc<Self::Result>> {
         if let Some(ref service) = self.result {
             return Ok(service.clone());

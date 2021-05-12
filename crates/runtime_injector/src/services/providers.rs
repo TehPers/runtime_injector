@@ -19,14 +19,14 @@ pub trait Provider: Service {
     fn provide(
         &mut self,
         injector: &Injector,
-        request_info: RequestInfo,
+        request_info: &RequestInfo,
     ) -> InjectResult<DynSvc>;
 
     /// Provides an owned instance of the service.
     fn provide_owned(
         &mut self,
         _injector: &Injector,
-        _request_info: RequestInfo,
+        _request_info: &RequestInfo,
     ) -> InjectResult<OwnedDynSvc> {
         Err(InjectError::OwnedNotSupported {
             service_info: self.result(),
@@ -45,7 +45,7 @@ where
     fn provide(
         &mut self,
         injector: &Injector,
-        request_info: RequestInfo,
+        request_info: &RequestInfo,
     ) -> InjectResult<DynSvc> {
         let result = self.provide_typed(injector, request_info)?;
         Ok(result as DynSvc)
@@ -54,7 +54,7 @@ where
     fn provide_owned(
         &mut self,
         injector: &Injector,
-        request_info: RequestInfo,
+        request_info: &RequestInfo,
     ) -> InjectResult<OwnedDynSvc> {
         let result = self.provide_owned_typed(injector, request_info)?;
         Ok(result as OwnedDynSvc)
@@ -86,7 +86,7 @@ where
 ///     fn provide_typed(
 ///         &mut self,
 ///         _injector: &Injector,
-///         _request_info: RequestInfo,
+///         _request_info: &RequestInfo,
 ///     ) -> InjectResult<Svc<Self::Result>> {
 ///         Ok(Svc::new(Foo))
 ///     }
@@ -107,7 +107,7 @@ pub trait TypedProvider: Sized + Provider {
     fn provide_typed(
         &mut self,
         injector: &Injector,
-        request_info: RequestInfo,
+        request_info: &RequestInfo,
     ) -> InjectResult<Svc<Self::Result>>;
 
     /// Provides an owned instance of the service. Not all providers can
@@ -115,7 +115,7 @@ pub trait TypedProvider: Sized + Provider {
     fn provide_owned_typed(
         &mut self,
         _injector: &Injector,
-        _request_info: RequestInfo,
+        _request_info: &RequestInfo,
     ) -> InjectResult<Box<Self::Result>> {
         Err(InjectError::OwnedNotSupported {
             service_info: ServiceInfo::of::<Self::Result>(),
@@ -191,7 +191,7 @@ where
     fn provide(
         &mut self,
         injector: &Injector,
-        request_info: RequestInfo,
+        request_info: &RequestInfo,
     ) -> InjectResult<DynSvc> {
         self.inner.provide(injector, request_info)
     }
@@ -199,7 +199,7 @@ where
     fn provide_owned(
         &mut self,
         injector: &Injector,
-        request_info: RequestInfo,
+        request_info: &RequestInfo,
     ) -> InjectResult<OwnedDynSvc> {
         self.inner.provide_owned(injector, request_info)
     }

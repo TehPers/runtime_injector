@@ -43,7 +43,7 @@ pub struct Factory<R: Request> {
 impl<R: Request> Factory<R> {
     /// Performs the factory's inner request.
     pub fn get(&self) -> InjectResult<R> {
-        R::request(&self.injector, self.request_info.clone())
+        R::request(&self.injector, &self.request_info)
     }
 
     /// Gets this factory's inner [`RequestInfo`]. This request info is used by
@@ -66,10 +66,10 @@ impl<R: Request> Factory<R> {
 }
 
 impl<R: Request> Request for Factory<R> {
-    fn request(injector: &Injector, info: RequestInfo) -> InjectResult<Self> {
+    fn request(injector: &Injector, info: &RequestInfo) -> InjectResult<Self> {
         Ok(Factory {
             injector: injector.clone(),
-            request_info: info,
+            request_info: info.clone(),
             marker: PhantomData,
         })
     }

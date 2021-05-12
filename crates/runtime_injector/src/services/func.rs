@@ -33,7 +33,7 @@ pub trait ServiceFactory<D>: Service {
     fn invoke(
         &mut self,
         injector: &Injector,
-        request_info: RequestInfo,
+        request_info: &RequestInfo,
     ) -> InjectResult<Self::Result>;
 }
 
@@ -58,11 +58,11 @@ macro_rules! impl_provider_function {
             fn invoke(
                 &mut self,
                 injector: &Injector,
-                request_info: RequestInfo
+                request_info: &RequestInfo
             ) -> InjectResult<Self::Result> {
                 let request_info = request_info.with_request(ServiceInfo::of::<R>());
                 let result = self($(
-                    match <$type_name as Request>::request(&injector, request_info.clone()) {
+                    match <$type_name as Request>::request(&injector, &request_info) {
                         Ok(dependency) => dependency,
                         Err($crate::InjectError::MissingProvider { service_info }) => {
                             return Err($crate::InjectError::MissingDependency {
