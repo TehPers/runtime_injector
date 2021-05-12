@@ -1,5 +1,3 @@
-use std::any::Any;
-
 use crate::{
     InjectResult, Injector, Request, RequestInfo, Service, ServiceInfo,
 };
@@ -27,7 +25,7 @@ use crate::{
 /// factory.invoke(&injector, RequestInfo::new());
 /// # }
 /// ```
-pub trait ServiceFactory<D>: Any {
+pub trait ServiceFactory<D>: Service {
     /// The resulting service from invoking this service factory.
     type Result: Service;
 
@@ -50,7 +48,7 @@ macro_rules! impl_provider_function {
     (@impl ($($type_name:ident),*)) => {
         impl<F, R $(, $type_name)*> ServiceFactory<($($type_name,)*)> for F
         where
-            F: Any + FnMut($($type_name),*) -> R,
+            F: Service + FnMut($($type_name),*) -> R,
             R: Service,
             $($type_name: Request,)*
         {

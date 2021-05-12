@@ -35,7 +35,7 @@ impl<D, R, F> TypedProvider for TransientProvider<D, R, F>
 where
     D: Service,
     R: Service,
-    F: ServiceFactory<D, Result = R> + Service,
+    F: ServiceFactory<D, Result = R>,
 {
     type Result = R;
 

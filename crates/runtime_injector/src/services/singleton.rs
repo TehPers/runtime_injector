@@ -37,7 +37,7 @@ impl<D, R, F> TypedProvider for SingletonProvider<D, R, F>
 where
     D: Service,
     R: Service,
-    F: ServiceFactory<D, Result = R> + Service,
+    F: ServiceFactory<D, Result = R>,
 {
     type Result = R;
 
