@@ -1,10 +1,13 @@
 //! Utility library for injecting dependencies into actix-web applications.
 
 #![forbid(unsafe_code)]
-#![warn(missing_docs, clippy::all, clippy::pedantic)]
+#![deny(clippy::all, clippy::pedantic)]
+#![warn(missing_docs)]
 #![allow(
     clippy::module_name_repetitions,
     clippy::missing_errors_doc,
+    clippy::doc_markdown,
+    clippy::needless_doctest_main,
     clippy::needless_pass_by_value
 )]
 
