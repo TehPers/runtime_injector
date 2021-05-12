@@ -334,7 +334,7 @@ mod tests {
                 _injector: &Injector,
                 _request_info: &RequestInfo,
             ) -> InjectResult<DynSvc> {
-                Ok(Svc::new(1.2f32))
+                Ok(Svc::new(1.2_f32))
             }
         }
 

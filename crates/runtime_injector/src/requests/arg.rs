@@ -185,7 +185,7 @@ mod tests {
                     inner.downcast_ref().expect("failed to downcast error");
                 match inner {
                     ArgRequestError::MissingParameter => {}
-                    inner @ _ => Err(inner).unwrap(),
+                    inner => Err(inner).unwrap(),
                 }
             }
             Err(error) => Err(error).unwrap(),
@@ -207,7 +207,7 @@ mod tests {
                     inner.downcast_ref().expect("failed to downcast error");
                 match inner {
                     ArgRequestError::NoParentRequest => {}
-                    inner @ _ => Err(inner).unwrap(),
+                    inner => Err(inner).unwrap(),
                 }
             }
             Err(error) => Err(error).unwrap(),
