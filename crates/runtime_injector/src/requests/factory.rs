@@ -73,25 +73,30 @@ impl<R: Request> Factory<R> {
     /// ## Example
     ///
     /// ```
-    /// use runtime_injector::{Arg, Factory, Injector, IntoTransient, WithArg};
+    /// use runtime_injector::{
+    ///     Arg, Factory, InjectResult, Injector, IntoSingleton, IntoTransient,
+    ///     Svc, WithArg,
+    /// };
     ///
     /// struct Foo(Arg<i32>);
     ///
+    /// struct Bar(Factory<Box<Foo>>);
+    /// impl Bar {
+    ///     fn get_foo(&self, arg: i32) -> InjectResult<Box<Foo>> {
+    ///         let mut factory = self.0.clone();
+    ///         factory.request_info_mut().with_arg::<Foo, i32>(arg);
+    ///         factory.get()
+    ///     }
+    /// }
+    ///
     /// let mut builder = Injector::builder();
     /// builder.provide(Foo.transient());
+    /// builder.provide(Bar.singleton());
     ///
     /// let injector = builder.build();
-    /// let factory: Factory<Box<Foo>> = injector.get().unwrap();
-    /// let foo1 = {
-    ///     let mut factory = factory.clone();
-    ///     factory.request_info_mut().with_arg::<Foo, i32>(1);
-    ///     factory.get().unwrap()
-    /// };
-    /// let foo2 = {
-    ///     let mut factory = factory.clone();
-    ///     factory.request_info_mut().with_arg::<Foo, i32>(2);
-    ///     factory.get().unwrap()
-    /// };
+    /// let bar: Svc<Bar> = injector.get().unwrap();
+    /// let foo1 = bar.get_foo(1).unwrap();
+    /// let foo2 = bar.get_foo(2).unwrap();
     ///
     /// assert_eq!(1, *foo1.0);
     /// assert_eq!(2, *foo2.0);
