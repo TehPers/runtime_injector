@@ -236,7 +236,8 @@
     clippy::module_name_repetitions,
     clippy::missing_errors_doc,
     clippy::doc_markdown,
-    clippy::needless_doctest_main
+    clippy::needless_doctest_main,
+    clippy::needless_pass_by_value
 )]
 
 #[cfg(not(any(feature = "arc", feature = "rc")))]
