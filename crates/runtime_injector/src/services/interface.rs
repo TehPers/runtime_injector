@@ -50,6 +50,7 @@ impl<T: Service> Interface for T {
 }
 
 /// Marker trait that indicates that a type is an interface for another type.
+///
 /// Each sized type is an interface for itself, and each `dyn Trait` is an
 /// interface for the types that it can resolve. This trait should usually be
 /// implemented by the [`interface!`] macro, and is strictly used to enforce

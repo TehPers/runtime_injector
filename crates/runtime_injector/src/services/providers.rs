@@ -5,10 +5,12 @@ use crate::{
     OwnedDynSvc, RequestInfo, Service, ServiceInfo, Svc,
 };
 
-/// Weakly typed service provider. Given an injector, this will provide an
-/// implementation of a service. This is automatically implemented for all
-/// types that implement [`TypedProvider`], and [`TypedProvider`] should be
-/// preferred if possible to allow for stronger type checking.
+/// Weakly typed service provider.
+///
+/// Given an injector, this can provide an instance of a service. This is
+/// automatically implemented for all types that implement [`TypedProvider`],
+/// and [`TypedProvider`] should be preferred if possible for custom service
+/// providers to allow for stronger type checking.
 pub trait Provider: Service {
     /// The [`ServiceInfo`] which describes the type returned by this provider.
     fn result(&self) -> ServiceInfo;
@@ -59,12 +61,14 @@ where
     }
 }
 
-/// A strongly-typed service provider. Types which implement this provide
-/// instances of a service type when requested. Examples of typed providers
-/// include providers created from service factories or constant providers.
-/// This should be preferred over [`Provider`] for custom service providers if
-/// possible due to the strong type guarantees this provides. [`Provider`] is
-/// automatically implemented for all types which implement [`TypedProvider`].
+/// A strongly-typed service provider.
+///
+/// Types which implement this trait can provide strongly-typed instances of a
+/// particular service type. Examples of typed providers include providers
+/// created from service factories or constant providers. This should be
+/// preferred over [`Provider`] for custom service providers if possible due to
+/// the strong type guarantees this provides. [`Provider`] is automatically
+/// implemented for all types which implement [`TypedProvider`].
 ///
 /// # Example
 ///
@@ -95,7 +99,7 @@ where
 /// let _foo: Svc<Foo> = injector.get().unwrap();
 /// ```
 pub trait TypedProvider: Sized + Provider {
-    /// The type of service this provider can activate.
+    /// The type of service this can provide.
     type Result: Interface;
 
     /// Provides an instance of the service. The [`Injector`] passed in can be

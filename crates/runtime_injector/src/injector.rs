@@ -74,8 +74,8 @@ pub(crate) use types::*;
 ///
 /// Note that requesting the injector inside of your services is generally bad
 /// practice, and is known as the service locator antipattern. This is mostly
-/// useful for service factories where you can create instances of your
-/// services on demand.
+/// useful for custom ad-hoc service factories where you can create instances
+/// of your services on demand.
 ///
 /// ```
 /// use runtime_injector::{
@@ -87,7 +87,7 @@ pub(crate) use types::*;
 ///
 /// impl FloatFactory {
 ///     pub fn get(&self) -> InjectResult<f32> {
-///         let int: Svc<i32> = self.0.get()?;
+///         let int: Box<i32> = self.0.get()?;
 ///         Ok(*int as f32)
 ///     }
 /// }
