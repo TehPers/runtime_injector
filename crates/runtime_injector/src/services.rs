@@ -1,3 +1,4 @@
+mod conditional;
 mod constant;
 mod fallible;
 mod func;
@@ -7,6 +8,7 @@ mod service;
 mod singleton;
 mod transient;
 
+pub use conditional::*;
 pub use constant::*;
 pub use fallible::*;
 pub use func::*;

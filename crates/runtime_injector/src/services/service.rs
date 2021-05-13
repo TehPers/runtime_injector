@@ -170,6 +170,11 @@ pub enum InjectError {
 
     /// This provider's conditions for providing its service have not and it
     /// should be ignored.
+    ///
+    /// Returning this from a provider causes the provider to be ignored during
+    /// service resolution. See [`ConditionalProvider`] for more information.
+    ///
+    /// [`ConditionalProvider`]: crate::ConditionalProvider
     ConditionsNotMet {
         /// The service that was requested.
         service_info: ServiceInfo,
