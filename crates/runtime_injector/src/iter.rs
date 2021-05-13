@@ -222,7 +222,7 @@ impl<'a, I: ?Sized + Interface> Iterator for ServicesIter<'a, I> {
         } = self;
 
         provider_iter
-            .flat_map(|provider| {
+            .filter_map(|provider| {
                 match provider.provide(injector, request_info) {
                     Ok(result) => Some(I::downcast(result)),
                     Err(InjectError::ConditionsNotMet { .. }) => None,
@@ -295,7 +295,7 @@ impl<'a, I: ?Sized + Interface> Iterator for OwnedServicesIter<'a, I> {
         } = self;
 
         provider_iter
-            .flat_map(|provider| {
+            .filter_map(|provider| {
                 match provider.provide_owned(injector, request_info) {
                     Ok(result) => Some(I::downcast_owned(result)),
                     Err(InjectError::ConditionsNotMet { .. }) => None,
