@@ -217,7 +217,7 @@ impl Injector {
     /// };
     ///
     /// trait Foo: Send + Sync {}
-    /// interface!(Foo = [Bar]);
+    /// interface!(dyn Foo = [Bar]);
     ///
     /// #[derive(Default)]
     /// struct Bar;
@@ -239,7 +239,7 @@ impl Injector {
     /// };
     ///
     /// trait Foo: Send + Sync {}
-    /// interface!(Foo = [Bar, Baz]);
+    /// interface!(dyn Foo = [Bar, Baz]);
     ///
     /// #[derive(Default)]
     /// struct Bar;

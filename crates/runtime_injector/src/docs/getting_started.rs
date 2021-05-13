@@ -245,7 +245,7 @@
 //! // container a little more information by declaring our interfaces. First,
 //! // we have three implementations of `OutputWriter`
 //! interface! {
-//!     OutputWriter = [
+//!     dyn OutputWriter = [
 //!         ConsoleWriter,
 //!         HttpsWriter,
 //!         TcpWriter,
@@ -256,7 +256,7 @@
 //!
 //! // We also have two implementations of `OutputFormatter`
 //! interface! {
-//!     OutputFormatter = [
+//!     dyn OutputFormatter = [
 //!         UserFormatter,
 //!         DefaultFormatter
 //!     ]
@@ -264,7 +264,7 @@
 //!
 //! // Finally, we have two implementations of `InputReader` as well
 //! interface! {
-//!     InputReader = [
+//!     dyn InputReader = [
 //!         ConsoleReader,
 //!         #[cfg(test)]
 //!         MockReader

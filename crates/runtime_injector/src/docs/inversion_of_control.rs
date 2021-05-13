@@ -216,24 +216,23 @@
 //!     }
 //! }
 //!
-//! // Now we need to declare what services we can use. Since we have three
-//! // implementations of a user database, we'll declare `UserDatabase` as
-//! // being an interface that supports those three types
+//! // Now we need to declare what services we can use.
 //! interface! {
-//!     UserDatabase = [
+//!     // Since we have three implementations of a user database, we'll
+//!     // declare `UserDatabase` as being an interface that supports those
+//!     // three types
+//!     dyn UserDatabase = [
 //!         MockUserDatabase,
 //!         SqlUserDatabase,
 //!         IntegrationUserDatabase,
-//!     ]
-//! }
+//!     ],
 //!
-//! // Similarly, we'll declare `UserAuthenticator` as being an interface that
-//! // supports both our database-backed authenticator and our mock one
-//! interface! {
-//!     UserAuthenticator = [
+//!     // Similarly, we'll declare `UserAuthenticator` as being an interface
+//!     // that supports both our database-backed authenticator and mock one
+//!     dyn UserAuthenticator = [
 //!         MockUserAuthenticator,
 //!         DatabaseUserAuthenticator,
-//!     ]
+//!     ],
 //! }
 //!
 //! fn main() {

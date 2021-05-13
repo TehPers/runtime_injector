@@ -85,47 +85,57 @@ impl<T: Service> InterfaceFor<T> for T {}
 /// // Requests for `dyn Foo` can resolve to either `Bar` or, in a test run,
 /// // `MockBar`. Note that attributes are allowed on each of the listed types.
 /// interface! {
-///     Foo = [
+///     dyn Foo = [
 ///         Bar,
 ///         #[cfg(test)]
 ///         MockBar,
-///     ]
+///     ],
 /// };
 /// ```
 #[macro_export]
 macro_rules! interface {
-    {$trait:tt = [$($(#[$($attr:meta),*])* $impl:ty),* $(,)?]} => {
-        impl $crate::Interface for dyn $trait {
-            #[allow(unused_assignments)]
-            fn downcast(mut service: $crate::DynSvc) -> $crate::InjectResult<$crate::Svc<Self>> {
-                $(
-                    $(#[$($attr),*])*
-                    match service.downcast::<$impl>() {
-                        Ok(downcasted) => return Ok(downcasted as $crate::Svc<Self>),
-                        Err(input) => service = input,
-                    }
-                )*
-
-                Err($crate::InjectError::MissingProvider { service_info: $crate::ServiceInfo::of::<Self>() })
-            }
-
-            #[allow(unused_assignments)]
-            fn downcast_owned(mut service: $crate::OwnedDynSvc) -> $crate::InjectResult<::std::boxed::Box<Self>> {
-                $(
-                    $(#[$($attr),*])*
-                    match service.downcast::<$impl>() {
-                        Ok(downcasted) => return Ok(downcasted as ::std::boxed::Box<Self>),
-                        Err(input) => service = input,
-                    }
-                )*
-
-                Err($crate::InjectError::MissingProvider { service_info: $crate::ServiceInfo::of::<Self>() })
-            }
-        }
-
+    {
         $(
-            $(#[$($attr),*])*
-            impl $crate::InterfaceFor<$impl> for dyn $trait {}
+            $interface:ty = [
+                $($(#[$($attr:meta),*])* $impl:ty),*
+                $(,)?
+            ]
+        ),*
+        $(,)?
+    } => {
+        $(
+            impl $crate::Interface for $interface {
+                #[allow(unused_assignments)]
+                fn downcast(mut service: $crate::DynSvc) -> $crate::InjectResult<$crate::Svc<Self>> {
+                    $(
+                        $(#[$($attr),*])*
+                        match service.downcast::<$impl>() {
+                            Ok(downcasted) => return Ok(downcasted as $crate::Svc<Self>),
+                            Err(input) => service = input,
+                        }
+                    )*
+
+                    Err($crate::InjectError::MissingProvider { service_info: $crate::ServiceInfo::of::<Self>() })
+                }
+
+                #[allow(unused_assignments)]
+                fn downcast_owned(mut service: $crate::OwnedDynSvc) -> $crate::InjectResult<::std::boxed::Box<Self>> {
+                    $(
+                        $(#[$($attr),*])*
+                        match service.downcast::<$impl>() {
+                            Ok(downcasted) => return Ok(downcasted as ::std::boxed::Box<Self>),
+                            Err(input) => service = input,
+                        }
+                    )*
+
+                    Err($crate::InjectError::MissingProvider { service_info: $crate::ServiceInfo::of::<Self>() })
+                }
+            }
+
+            $(
+                $(#[$($attr),*])*
+                impl $crate::InterfaceFor<$impl> for $interface {}
+            )*
         )*
     };
 }

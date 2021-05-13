@@ -149,7 +149,7 @@ fn interfaces() {
     }
 
     interface!(
-        Foo = [
+        dyn Foo = [
             Svc1,
             #[cfg(test)]
             Svc2,
@@ -223,7 +223,7 @@ fn multi_injection() {
     impl Foo for Svc2 {}
     impl Foo for Svc3 {}
 
-    interface!(Foo = [Svc1, Svc2, Svc3]);
+    interface!(dyn Foo = [Svc1, Svc2, Svc3]);
 
     let mut builder = Injector::builder();
     builder.provide(Svc1::default.transient().with_interface::<dyn Foo>());

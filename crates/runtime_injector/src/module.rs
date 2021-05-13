@@ -68,7 +68,7 @@ impl Module {
 /// impl Fooable for Foo {}
 /// impl Fooable for Bar {}
 /// interface! {
-///     Fooable = [
+///     dyn Fooable = [
 ///         Foo,
 ///         Bar,
 ///         #[cfg(test)]
