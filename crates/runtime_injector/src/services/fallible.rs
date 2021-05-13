@@ -1,4 +1,7 @@
-use crate::{InjectError, InjectResult, Service, ServiceFactory, ServiceInfo};
+use crate::{
+    InjectError, InjectResult, Injector, RequestInfo, Service, ServiceFactory,
+    ServiceInfo,
+};
 use std::{error::Error, marker::PhantomData};
 
 /// A service factory that may fail during service creation with a custom error
@@ -26,8 +29,8 @@ where
 
     fn invoke(
         &mut self,
-        injector: &crate::Injector,
-        request_info: crate::RequestInfo,
+        injector: &Injector,
+        request_info: &RequestInfo,
     ) -> InjectResult<Self::Result> {
         let result = self.inner.invoke(injector, request_info)?;
         match result {
@@ -57,7 +60,7 @@ where
     /// can be requested as a [`Svc<T>`](crate::Svc), however if the
     /// constructor fails, an injection error is returned from the request.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```
     /// use runtime_injector::{

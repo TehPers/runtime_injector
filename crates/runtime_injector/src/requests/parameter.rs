@@ -1,13 +1,12 @@
 use crate::{AsAny, Service};
-use std::fmt::Debug;
 
 /// A parameter for configuring requested services.
-pub trait RequestParameter: Service + Debug + AsAny {
+pub trait RequestParameter: Service + AsAny {
     /// Clones this parameter into a boxed trait object.
     fn clone_dyn(&self) -> Box<dyn RequestParameter>;
 }
 
-impl<T: Service + Debug + Clone + AsAny> RequestParameter for T {
+impl<T: Service + Clone + AsAny> RequestParameter for T {
     fn clone_dyn(&self) -> Box<dyn RequestParameter> {
         Box::new(self.clone())
     }

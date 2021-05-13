@@ -1,6 +1,6 @@
 use crate::{
     InjectResult, InjectorBuilder, Interface, Provider, Request, RequestInfo,
-    ServiceInfo, Services,
+    ServiceInfo, Services, Svc,
 };
 use std::collections::HashMap;
 
@@ -64,7 +64,7 @@ pub(crate) use types::*;
 /// between service types and their providers, as well as all the mappings from
 /// interfaces to their implementations (if they differ).
 ///
-/// # Injecting the injector
+/// ## Injecting the injector
 ///
 /// Cloning the injector does not clone the providers inside of it. Instead,
 /// both injectors will use the same providers, meaning that an injector can be
@@ -74,8 +74,8 @@ pub(crate) use types::*;
 ///
 /// Note that requesting the injector inside of your services is generally bad
 /// practice, and is known as the service locator antipattern. This is mostly
-/// useful for service factories where you can create instances of your
-/// services on demand.
+/// useful for custom ad-hoc service factories where you can create instances
+/// of your services on demand.
 ///
 /// ```
 /// use runtime_injector::{
@@ -86,12 +86,8 @@ pub(crate) use types::*;
 /// struct FloatFactory(Injector);
 ///
 /// impl FloatFactory {
-///     pub fn new(injector: Injector) -> Self {
-///         FloatFactory(injector)
-///     }
-///
 ///     pub fn get(&self) -> InjectResult<f32> {
-///         let int: Svc<i32> = self.0.get()?;
+///         let int: Box<i32> = self.0.get()?;
 ///         Ok(*int as f32)
 ///     }
 /// }
@@ -105,7 +101,7 @@ pub(crate) use types::*;
 /// let mut builder = Injector::builder();
 /// builder.provide(constant(Mutex::new(0i32)));
 /// builder.provide(count.transient());
-/// builder.provide(FloatFactory::new.singleton());
+/// builder.provide(FloatFactory.singleton());
 ///
 /// let injector = builder.build();
 /// let float_factory: Svc<FloatFactory> = injector.get().unwrap();
@@ -115,9 +111,10 @@ pub(crate) use types::*;
 /// assert_eq!(1.0, value1);
 /// assert_eq!(2.0, value2);
 /// ```
-#[derive(Clone)]
+#[derive(Clone, Default)]
 pub struct Injector {
     provider_map: MapContainer<ProviderMap>,
+    root_request_info: Svc<RequestInfo>,
 }
 
 impl Injector {
@@ -131,9 +128,24 @@ impl Injector {
     /// Creates a new injector directly from its providers and implementations.
     /// Prefer [`Injector::builder()`] for creating new injectors instead.
     #[must_use]
+    #[deprecated(
+        note = "prefer using a builder; this will be removed in 0.5",
+        since = "0.3.1"
+    )]
     pub fn new(providers: ProviderMap) -> Self {
         Injector {
             provider_map: MapContainerEx::new(providers),
+            root_request_info: Svc::new(RequestInfo::default()),
+        }
+    }
+
+    pub(crate) fn new_from_parts(
+        providers: ProviderMap,
+        request_info: RequestInfo,
+    ) -> Self {
+        Injector {
+            provider_map: MapContainerEx::new(providers),
+            root_request_info: Svc::new(request_info),
         }
     }
 
@@ -170,7 +182,8 @@ impl Injector {
     ///   including the current resolution path.
     ///
     /// See the [documentation for `Request`](Request) for more information on
-    /// what can be requested.
+    /// what can be requested. Custom request types can also be created by
+    /// implementing [`Request`] on your type.
     ///
     /// Requests to service pointers of sized types will attempt to use the
     /// registered provider to retrieve an instance of that service. For
@@ -192,7 +205,7 @@ impl Injector {
     /// let _bar: Svc<Bar> = injector.get().unwrap();
     /// ```
     ///
-    /// Requests to service pointers of `dyn Trait` interface types will
+    /// Requests for service pointers of `dyn Trait` interface types will
     /// instead request the implementation of that interface type. For example,
     /// if `dyn Foo`'s registered implementation is for the service type `Bar`,
     /// then a request for a service pointer of `dyn Foo` will return a service
@@ -218,7 +231,7 @@ impl Injector {
     /// ```
     ///
     /// If multiple providers for a service exist, then a request for a single
-    /// service pointer to that service will fail:
+    /// service pointer to that service will fail.
     ///
     /// ```
     /// use runtime_injector::{
@@ -243,15 +256,13 @@ impl Injector {
     /// let injector = builder.build();
     /// assert!(injector.get::<Svc<dyn Foo>>().is_err());
     /// ```
-    ///
-    /// Custom request types can also be used by implementing [`Request`].
     pub fn get<R: Request>(&self) -> InjectResult<R> {
-        self.get_with(RequestInfo::new())
+        self.get_with(self.root_request_info.as_ref())
     }
 
     /// Performs a request for a service with additional request information.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```
     /// use runtime_injector::{
@@ -278,12 +289,12 @@ impl Injector {
     /// let mut request_info = RequestInfo::default();
     /// request_info.insert_parameter("value", "foo".to_owned());
     ///
-    /// let foo: Svc<Foo> = injector.get_with(request_info).unwrap();
+    /// let foo: Svc<Foo> = injector.get_with(&request_info).unwrap();
     /// assert_eq!("foo", foo.0);
     /// ```
     pub fn get_with<R: Request>(
         &self,
-        request_info: RequestInfo,
+        request_info: &RequestInfo,
     ) -> InjectResult<R> {
         R::request(self, request_info)
     }
@@ -292,9 +303,13 @@ impl Injector {
     /// equivalent to requesting [`Services<T>`] from [`Injector::get()`].
     pub(crate) fn get_service<I: ?Sized + Interface>(
         &self,
-        request_info: RequestInfo,
+        request_info: &RequestInfo,
     ) -> InjectResult<Services<I>> {
-        Services::new(self.clone(), self.provider_map.clone(), request_info)
+        Services::new(
+            self.clone(),
+            self.provider_map.clone(),
+            request_info.clone(),
+        )
     }
 }
 
@@ -317,9 +332,9 @@ mod tests {
             fn provide(
                 &mut self,
                 _injector: &Injector,
-                _request_info: RequestInfo,
+                _request_info: &RequestInfo,
             ) -> InjectResult<DynSvc> {
-                Ok(Svc::new(1.2f32))
+                Ok(Svc::new(1.2_f32))
             }
         }
 

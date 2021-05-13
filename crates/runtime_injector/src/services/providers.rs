@@ -5,10 +5,12 @@ use crate::{
     OwnedDynSvc, RequestInfo, Service, ServiceInfo, Svc,
 };
 
-/// Weakly typed service provider. Given an injector, this will provide an
-/// implementation of a service. This is automatically implemented for all
-/// types that implement [`TypedProvider`], and [`TypedProvider`] should be
-/// preferred if possible to allow for stronger type checking.
+/// Weakly typed service provider.
+///
+/// Given an injector, this can provide an instance of a service. This is
+/// automatically implemented for all types that implement [`TypedProvider`],
+/// and [`TypedProvider`] should be preferred if possible for custom service
+/// providers to allow for stronger type checking.
 pub trait Provider: Service {
     /// The [`ServiceInfo`] which describes the type returned by this provider.
     fn result(&self) -> ServiceInfo;
@@ -17,14 +19,14 @@ pub trait Provider: Service {
     fn provide(
         &mut self,
         injector: &Injector,
-        request_info: RequestInfo,
+        request_info: &RequestInfo,
     ) -> InjectResult<DynSvc>;
 
     /// Provides an owned instance of the service.
     fn provide_owned(
         &mut self,
         _injector: &Injector,
-        _request_info: RequestInfo,
+        _request_info: &RequestInfo,
     ) -> InjectResult<OwnedDynSvc> {
         Err(InjectError::OwnedNotSupported {
             service_info: self.result(),
@@ -43,7 +45,7 @@ where
     fn provide(
         &mut self,
         injector: &Injector,
-        request_info: RequestInfo,
+        request_info: &RequestInfo,
     ) -> InjectResult<DynSvc> {
         let result = self.provide_typed(injector, request_info)?;
         Ok(result as DynSvc)
@@ -52,21 +54,23 @@ where
     fn provide_owned(
         &mut self,
         injector: &Injector,
-        request_info: RequestInfo,
+        request_info: &RequestInfo,
     ) -> InjectResult<OwnedDynSvc> {
         let result = self.provide_owned_typed(injector, request_info)?;
         Ok(result as OwnedDynSvc)
     }
 }
 
-/// A strongly-typed service provider. Types which implement this provide
-/// instances of a service type when requested. Examples of typed providers
-/// include providers created from service factories or constant providers.
-/// This should be preferred over [`Provider`] for custom service providers if
-/// possible due to the strong type guarantees this provides. [`Provider`] is
-/// automatically implemented for all types which implement [`TypedProvider`].
+/// A strongly-typed service provider.
 ///
-/// # Example
+/// Types which implement this trait can provide strongly-typed instances of a
+/// particular service type. Examples of typed providers include providers
+/// created from service factories or constant providers. This should be
+/// preferred over [`Provider`] for custom service providers if possible due to
+/// the strong type guarantees this provides. [`Provider`] is automatically
+/// implemented for all types which implement [`TypedProvider`].
+///
+/// ## Example
 ///
 /// ```
 /// use runtime_injector::{
@@ -82,7 +86,7 @@ where
 ///     fn provide_typed(
 ///         &mut self,
 ///         _injector: &Injector,
-///         _request_info: RequestInfo,
+///         _request_info: &RequestInfo,
 ///     ) -> InjectResult<Svc<Self::Result>> {
 ///         Ok(Svc::new(Foo))
 ///     }
@@ -95,7 +99,7 @@ where
 /// let _foo: Svc<Foo> = injector.get().unwrap();
 /// ```
 pub trait TypedProvider: Sized + Provider {
-    /// The type of service this provider can activate.
+    /// The type of service this can provide.
     type Result: Interface;
 
     /// Provides an instance of the service. The [`Injector`] passed in can be
@@ -103,7 +107,7 @@ pub trait TypedProvider: Sized + Provider {
     fn provide_typed(
         &mut self,
         injector: &Injector,
-        request_info: RequestInfo,
+        request_info: &RequestInfo,
     ) -> InjectResult<Svc<Self::Result>>;
 
     /// Provides an owned instance of the service. Not all providers can
@@ -111,7 +115,7 @@ pub trait TypedProvider: Sized + Provider {
     fn provide_owned_typed(
         &mut self,
         _injector: &Injector,
-        _request_info: RequestInfo,
+        _request_info: &RequestInfo,
     ) -> InjectResult<Box<Self::Result>> {
         Err(InjectError::OwnedNotSupported {
             service_info: ServiceInfo::of::<Self::Result>(),
@@ -122,12 +126,18 @@ pub trait TypedProvider: Sized + Provider {
     /// Rather than requesting this service with its concrete type, it can
     /// instead be requested by its interface type.
     ///
+    /// *Note: it cannot be requested with its concrete type once it has been
+    /// assigned an interface.*
+    ///
+    /// ## Example
+    ///
     /// ```
     /// use runtime_injector::{
-    ///     interface, InjectResult, Injector, IntoSingleton, Svc, TypedProvider,
+    ///     interface, InjectResult, Injector, IntoSingleton, Service, Svc,
+    ///     TypedProvider,
     /// };
     ///
-    /// trait Fooable: Send + Sync {
+    /// trait Fooable: Service {
     ///     fn bar(&self) {}
     /// }
     ///
@@ -181,7 +191,7 @@ where
     fn provide(
         &mut self,
         injector: &Injector,
-        request_info: RequestInfo,
+        request_info: &RequestInfo,
     ) -> InjectResult<DynSvc> {
         self.inner.provide(injector, request_info)
     }
@@ -189,7 +199,7 @@ where
     fn provide_owned(
         &mut self,
         injector: &Injector,
-        request_info: RequestInfo,
+        request_info: &RequestInfo,
     ) -> InjectResult<OwnedDynSvc> {
         self.inner.provide_owned(injector, request_info)
     }

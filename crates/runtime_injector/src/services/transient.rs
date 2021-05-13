@@ -35,14 +35,14 @@ impl<D, R, F> TypedProvider for TransientProvider<D, R, F>
 where
     D: Service,
     R: Service,
-    F: ServiceFactory<D, Result = R> + Service,
+    F: ServiceFactory<D, Result = R>,
 {
     type Result = R;
 
     fn provide_typed(
         &mut self,
         injector: &Injector,
-        request_info: RequestInfo,
+        request_info: &RequestInfo,
     ) -> InjectResult<Svc<Self::Result>> {
         let result = self.factory.invoke(injector, request_info)?;
         Ok(Svc::new(result))
@@ -51,7 +51,7 @@ where
     fn provide_owned_typed(
         &mut self,
         injector: &Injector,
-        request_info: RequestInfo,
+        request_info: &RequestInfo,
     ) -> InjectResult<Box<Self::Result>> {
         let result = self.factory.invoke(injector, request_info)?;
         Ok(Box::new(result))
@@ -69,7 +69,7 @@ where
     /// each time the service is requested and will never return service
     /// pointers to the same instance more than once.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```
     /// use runtime_injector::{Injector, IntoTransient, Svc};

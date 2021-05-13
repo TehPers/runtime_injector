@@ -147,7 +147,7 @@
 //! multiple target environments! This doesn't even include our business logic.
 //!
 //! ## Simplifying our code with runtime_injector
-//! 
+//!
 //! As our application grows, so does the number of helper functions we need to
 //! create to handle all the different implementations of our services. This
 //! quickly becomes ugly and unmaintainable. What happens if we let something
@@ -158,7 +158,7 @@
 //! ```
 //! use runtime_injector::{
 //!     constant, define_module, interface, Injector, IntoSingleton,
-//!     IntoTransient, Svc, Service
+//!     IntoTransient, Service, Svc,
 //! };
 //!
 //! #[derive(Clone, Debug)]
@@ -291,7 +291,7 @@
 //!     };
 //! }
 //! ```
-//! 
+//!
 //! We still have all our different implementations of `UserDatabase` and
 //! `UserAuthenticator`, but now it's super easy to get the correct
 //! implementations of each of those services when we need to! We don't need
