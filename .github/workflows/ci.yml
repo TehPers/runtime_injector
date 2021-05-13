@@ -57,6 +57,3 @@ jobs:
           --tests
           --no-default-features
           --features ${{ matrix.features }}
-          --
-          -D clippy::all
-          -D clippy::pedantic

@@ -37,14 +37,14 @@ impl<D, R, F> TypedProvider for SingletonProvider<D, R, F>
 where
     D: Service,
     R: Service,
-    F: ServiceFactory<D, Result = R> + Service,
+    F: ServiceFactory<D, Result = R>,
 {
     type Result = R;
 
     fn provide_typed(
         &mut self,
         injector: &Injector,
-        request_info: RequestInfo,
+        request_info: &RequestInfo,
     ) -> InjectResult<Svc<Self::Result>> {
         if let Some(ref service) = self.result {
             return Ok(service.clone());

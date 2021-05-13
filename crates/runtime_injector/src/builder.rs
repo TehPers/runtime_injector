@@ -38,12 +38,14 @@ impl InjectorBuilder {
 
     /// Borrows the root [`RequestInfo`] that will be used by calls to
     /// [`Injector::get()`].
+    #[must_use]
     pub fn root_info(&self) -> &RequestInfo {
         &self.root_info
     }
 
     /// Mutably borrows the root [`RequestInfo`] that will be used by calls to
     /// [`Injector::get()`].
+    #[must_use]
     pub fn root_info_mut(&mut self) -> &mut RequestInfo {
         &mut self.root_info
     }
@@ -68,7 +70,7 @@ impl InjectorBuilder {
         }
 
         for (key, value) in module.parameters {
-            let _ = self.root_info_mut().insert_parameter_boxed(&key, value);
+            drop(self.root_info_mut().insert_parameter_boxed(&key, value));
         }
     }
 

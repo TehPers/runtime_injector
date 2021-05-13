@@ -56,8 +56,9 @@ impl<T: Service + AsAny + Clone> DerefMut for Arg<T> {
     }
 }
 
+/// Allows custom pre-defined values to be passed as arguments to services.
 impl<T: Service + AsAny + Clone> Request for Arg<T> {
-    fn request(_injector: &Injector, info: RequestInfo) -> InjectResult<Self> {
+    fn request(_injector: &Injector, info: &RequestInfo) -> InjectResult<Self> {
         let parent_request = info.service_path().last().ok_or_else(|| {
             InjectError::ActivationFailed {
                 service_info: ServiceInfo::of::<Self>(),
@@ -185,7 +186,7 @@ mod tests {
                     inner.downcast_ref().expect("failed to downcast error");
                 match inner {
                     ArgRequestError::MissingParameter => {}
-                    inner @ _ => Err(inner).unwrap(),
+                    inner => Err(inner).unwrap(),
                 }
             }
             Err(error) => Err(error).unwrap(),
@@ -207,7 +208,7 @@ mod tests {
                     inner.downcast_ref().expect("failed to downcast error");
                 match inner {
                     ArgRequestError::NoParentRequest => {}
-                    inner @ _ => Err(inner).unwrap(),
+                    inner => Err(inner).unwrap(),
                 }
             }
             Err(error) => Err(error).unwrap(),

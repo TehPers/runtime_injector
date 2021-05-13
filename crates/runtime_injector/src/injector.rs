@@ -257,7 +257,7 @@ impl Injector {
     /// assert!(injector.get::<Svc<dyn Foo>>().is_err());
     /// ```
     pub fn get<R: Request>(&self) -> InjectResult<R> {
-        self.get_with(self.root_request_info.as_ref().clone())
+        self.get_with(self.root_request_info.as_ref())
     }
 
     /// Performs a request for a service with additional request information.
@@ -289,12 +289,12 @@ impl Injector {
     /// let mut request_info = RequestInfo::default();
     /// request_info.insert_parameter("value", "foo".to_owned());
     ///
-    /// let foo: Svc<Foo> = injector.get_with(request_info).unwrap();
+    /// let foo: Svc<Foo> = injector.get_with(&request_info).unwrap();
     /// assert_eq!("foo", foo.0);
     /// ```
     pub fn get_with<R: Request>(
         &self,
-        request_info: RequestInfo,
+        request_info: &RequestInfo,
     ) -> InjectResult<R> {
         R::request(self, request_info)
     }
@@ -303,9 +303,13 @@ impl Injector {
     /// equivalent to requesting [`Services<T>`] from [`Injector::get()`].
     pub(crate) fn get_service<I: ?Sized + Interface>(
         &self,
-        request_info: RequestInfo,
+        request_info: &RequestInfo,
     ) -> InjectResult<Services<I>> {
-        Services::new(self.clone(), self.provider_map.clone(), request_info)
+        Services::new(
+            self.clone(),
+            self.provider_map.clone(),
+            request_info.clone(),
+        )
     }
 }
 
@@ -328,9 +332,9 @@ mod tests {
             fn provide(
                 &mut self,
                 _injector: &Injector,
-                _request_info: RequestInfo,
+                _request_info: &RequestInfo,
             ) -> InjectResult<DynSvc> {
-                Ok(Svc::new(1.2f32))
+                Ok(Svc::new(1.2_f32))
             }
         }
 

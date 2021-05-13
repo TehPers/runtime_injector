@@ -32,7 +32,7 @@ where
     fn provide_typed(
         &mut self,
         _injector: &Injector,
-        _request_info: RequestInfo,
+        _request_info: &RequestInfo,
     ) -> InjectResult<Svc<Self::Result>> {
         Ok(self.result.clone())
     }
