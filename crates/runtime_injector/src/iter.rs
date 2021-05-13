@@ -2,7 +2,7 @@ use crate::{
     InjectError, InjectResult, Injector, Interface, MapContainer,
     MapContainerEx, Provider, ProviderMap, RequestInfo, ServiceInfo, Svc,
 };
-use std::marker::PhantomData;
+use std::{marker::PhantomData, slice::IterMut};
 
 /// A collection of all the providers for a particular interface.
 ///
@@ -92,10 +92,9 @@ impl<I: ?Sized + Interface> Services<I> {
     #[allow(clippy::missing_panics_doc)]
     pub fn get_all(&mut self) -> ServicesIter<'_, I> {
         ServicesIter {
-            providers: self.providers.as_mut().unwrap(), // Should never panic
+            provider_iter: self.providers.as_mut().unwrap().iter_mut(), /* Should never panic */
             injector: &self.injector,
             request_info: &self.request_info,
-            index: 0,
             marker: PhantomData,
         }
     }
@@ -107,10 +106,9 @@ impl<I: ?Sized + Interface> Services<I> {
     #[allow(clippy::missing_panics_doc)]
     pub fn get_all_owned(&mut self) -> OwnedServicesIter<'_, I> {
         OwnedServicesIter {
-            providers: self.providers.as_mut().unwrap(), // Should never panic
+            provider_iter: self.providers.as_mut().unwrap().iter_mut(), /* Should never panic */
             injector: &self.injector,
             request_info: &self.request_info,
-            index: 0,
             marker: PhantomData,
         }
     }
@@ -206,10 +204,9 @@ impl<I: ?Sized + Interface> Drop for Services<I> {
 /// assert!(iter.next().is_none());
 /// ```
 pub struct ServicesIter<'a, I: ?Sized + Interface> {
-    providers: &'a mut Vec<Box<dyn Provider>>,
+    provider_iter: IterMut<'a, Box<dyn Provider>>,
     injector: &'a Injector,
     request_info: &'a RequestInfo,
-    index: usize,
     marker: PhantomData<fn() -> I>,
 }
 
@@ -217,33 +214,34 @@ impl<'a, I: ?Sized + Interface> Iterator for ServicesIter<'a, I> {
     type Item = InjectResult<Svc<I>>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        loop {
-            match self.providers.get_mut(self.index) {
-                None => break None,
-                Some(provider) => {
-                    self.index += 1;
-                    let result = match provider
-                        .provide(self.injector, self.request_info)
-                    {
-                        Ok(result) => I::downcast(result),
-                        Err(InjectError::CycleDetected {
-                            mut cycle, ..
-                        }) => {
-                            let service_info = ServiceInfo::of::<I>();
-                            cycle.push(service_info);
-                            Err(InjectError::CycleDetected {
-                                service_info,
-                                cycle,
-                            })
-                        }
-                        Err(InjectError::ConditionsNotMet { .. }) => continue,
-                        Err(error) => Err(error),
-                    };
+        let ServicesIter {
+            provider_iter,
+            injector,
+            request_info,
+            ..
+        } = self;
 
-                    break Some(result);
+        provider_iter
+            .flat_map(|provider| {
+                match provider.provide(injector, request_info) {
+                    Ok(result) => Some(I::downcast(result)),
+                    Err(InjectError::ConditionsNotMet { .. }) => None,
+                    Err(InjectError::CycleDetected { mut cycle, .. }) => {
+                        let service_info = ServiceInfo::of::<I>();
+                        cycle.push(service_info);
+                        Some(Err(InjectError::CycleDetected {
+                            service_info,
+                            cycle,
+                        }))
+                    }
+                    Err(error) => Some(Err(error)),
                 }
-            }
-        }
+            })
+            .next()
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        (0, Some(self.provider_iter.len()))
     }
 }
 
@@ -279,10 +277,9 @@ impl<'a, I: ?Sized + Interface> Iterator for ServicesIter<'a, I> {
 /// assert!(iter.next().is_none());
 /// ```
 pub struct OwnedServicesIter<'a, I: ?Sized + Interface> {
-    providers: &'a mut Vec<Box<dyn Provider>>,
+    provider_iter: IterMut<'a, Box<dyn Provider>>,
     injector: &'a Injector,
     request_info: &'a RequestInfo,
-    index: usize,
     marker: PhantomData<fn() -> I>,
 }
 
@@ -290,32 +287,29 @@ impl<'a, I: ?Sized + Interface> Iterator for OwnedServicesIter<'a, I> {
     type Item = InjectResult<Box<I>>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        loop {
-            match self.providers.get_mut(self.index) {
-                None => break None,
-                Some(provider) => {
-                    self.index += 1;
-                    let result = match provider
-                        .provide_owned(self.injector, self.request_info)
-                    {
-                        Ok(result) => I::downcast_owned(result),
-                        Err(InjectError::CycleDetected {
-                            mut cycle, ..
-                        }) => {
-                            let service_info = ServiceInfo::of::<I>();
-                            cycle.push(service_info);
-                            Err(InjectError::CycleDetected {
-                                service_info,
-                                cycle,
-                            })
-                        }
-                        Err(InjectError::ConditionsNotMet { .. }) => continue,
-                        Err(error) => Err(error),
-                    };
+        let OwnedServicesIter {
+            provider_iter,
+            injector,
+            request_info,
+            ..
+        } = self;
 
-                    break Some(result);
+        provider_iter
+            .flat_map(|provider| {
+                match provider.provide_owned(injector, request_info) {
+                    Ok(result) => Some(I::downcast_owned(result)),
+                    Err(InjectError::ConditionsNotMet { .. }) => None,
+                    Err(InjectError::CycleDetected { mut cycle, .. }) => {
+                        let service_info = ServiceInfo::of::<I>();
+                        cycle.push(service_info);
+                        Some(Err(InjectError::CycleDetected {
+                            service_info,
+                            cycle,
+                        }))
+                    }
+                    Err(error) => Some(Err(error)),
                 }
-            }
-        }
+            })
+            .next()
     }
 }
