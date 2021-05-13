@@ -168,6 +168,13 @@ pub enum InjectError {
         service_info: ServiceInfo,
     },
 
+    /// This provider's conditions for providing its service have not and it
+    /// should be ignored.
+    ConditionsNotMet {
+        /// The service that was requested.
+        service_info: ServiceInfo,
+    },
+
     /// An error occurred during activation of a service.
     ActivationFailed {
         /// The service that was requested.
@@ -195,12 +202,12 @@ impl Display for InjectError {
         write!(f, "an error occurred during injection: ")?;
         match self {
             InjectError::MissingProvider { service_info } => {
-                write!(f, "{} has no provider", service_info.name())?
+                write!(f, "{} has no provider", service_info.name())
             }
             InjectError::MissingDependency {
                 service_info,
                 ..
-            } => write!(f, "{} is missing a dependency", service_info.name())?,
+            } => write!(f, "{} is missing a dependency", service_info.name()),
             InjectError::CycleDetected {
                 service_info,
                 cycle,
@@ -209,7 +216,7 @@ impl Display for InjectError {
                 "a cycle was detected during activation of {} [{}]",
                 service_info.name(),
                 fmt_cycle(cycle)
-            )?,
+            ),
             InjectError::InvalidImplementation {
                 service_info,
                 implementation,
@@ -218,9 +225,9 @@ impl Display for InjectError {
                 "{} is not registered as an implementer of {}",
                 implementation.name(),
                 service_info.name()
-            )?,
+            ),
             InjectError::InvalidProvider { service_info } => {
-                write!(f, "the registered provider for {} returned the wrong type", service_info.name())?
+                write!(f, "the registered provider for {} returned the wrong type", service_info.name())
             }
             InjectError::MultipleProviders {
                 service_info,
@@ -230,23 +237,28 @@ impl Display for InjectError {
                 "the requested service {} has {} providers registered (did you mean to request a Services<T> instead?)",
                 service_info.name(),
                 providers
-            )?,
+            ),
             InjectError::OwnedNotSupported {
                 service_info
             } => write!(
                 f,
                 "the registered provider can't provide an owned variant of {}",
                 service_info.name()
-            )?,
+            ),
+            InjectError::ConditionsNotMet { service_info } => {
+                write!(
+                    f,
+                    "the conditions for providing the service {} have not been met",
+                    service_info.name()
+                )
+            }
             InjectError::ActivationFailed { service_info, .. } => {
-                write!(f, "an error occurred during activation of {}", service_info.name())?
+                write!(f, "an error occurred during activation of {}", service_info.name())
             },
             InjectError::InternalError(message) => {
-                write!(f, "an unexpected error occurred (please report this): {}", message)?
+                write!(f, "an unexpected error occurred (please report this): {}", message)
             },
-        };
-
-        Ok(())
+        }
     }
 }
 

@@ -217,26 +217,31 @@ impl<'a, I: ?Sized + Interface> Iterator for ServicesIter<'a, I> {
     type Item = InjectResult<Svc<I>>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        match self.providers.get_mut(self.index) {
-            None => None,
-            Some(provider) => {
-                self.index += 1;
-                let result = match provider
-                    .provide(self.injector, self.request_info)
-                {
-                    Ok(result) => I::downcast(result),
-                    Err(InjectError::CycleDetected { mut cycle, .. }) => {
-                        let service_info = ServiceInfo::of::<I>();
-                        cycle.push(service_info);
+        loop {
+            match self.providers.get_mut(self.index) {
+                None => break None,
+                Some(provider) => {
+                    self.index += 1;
+                    let result = match provider
+                        .provide(self.injector, self.request_info)
+                    {
+                        Ok(result) => I::downcast(result),
                         Err(InjectError::CycleDetected {
-                            service_info,
-                            cycle,
-                        })
-                    }
-                    Err(error) => Err(error),
-                };
+                            mut cycle, ..
+                        }) => {
+                            let service_info = ServiceInfo::of::<I>();
+                            cycle.push(service_info);
+                            Err(InjectError::CycleDetected {
+                                service_info,
+                                cycle,
+                            })
+                        }
+                        Err(InjectError::ConditionsNotMet { .. }) => continue,
+                        Err(error) => Err(error),
+                    };
 
-                Some(result)
+                    break Some(result);
+                }
             }
         }
     }
@@ -285,26 +290,31 @@ impl<'a, I: ?Sized + Interface> Iterator for OwnedServicesIter<'a, I> {
     type Item = InjectResult<Box<I>>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        match self.providers.get_mut(self.index) {
-            None => None,
-            Some(provider) => {
-                self.index += 1;
-                let result = match provider
-                    .provide_owned(self.injector, self.request_info)
-                {
-                    Ok(result) => I::downcast_owned(result),
-                    Err(InjectError::CycleDetected { mut cycle, .. }) => {
-                        let service_info = ServiceInfo::of::<I>();
-                        cycle.push(service_info);
+        loop {
+            match self.providers.get_mut(self.index) {
+                None => break None,
+                Some(provider) => {
+                    self.index += 1;
+                    let result = match provider
+                        .provide_owned(self.injector, self.request_info)
+                    {
+                        Ok(result) => I::downcast_owned(result),
                         Err(InjectError::CycleDetected {
-                            service_info,
-                            cycle,
-                        })
-                    }
-                    Err(error) => Err(error),
-                };
+                            mut cycle, ..
+                        }) => {
+                            let service_info = ServiceInfo::of::<I>();
+                            cycle.push(service_info);
+                            Err(InjectError::CycleDetected {
+                                service_info,
+                                cycle,
+                            })
+                        }
+                        Err(InjectError::ConditionsNotMet { .. }) => continue,
+                        Err(error) => Err(error),
+                    };
 
-                Some(result)
+                    break Some(result);
+                }
             }
         }
     }
