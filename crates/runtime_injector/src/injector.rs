@@ -75,7 +75,10 @@ pub(crate) use types::*;
 /// Note that requesting the injector inside of your services is generally bad
 /// practice, and is known as the service locator antipattern. This is mostly
 /// useful for custom ad-hoc service factories where you can create instances
-/// of your services on demand.
+/// of your services on demand. If you need to create instances of a service
+/// outside of your constructor, you may want to use [`Factory<R>`] instead.
+///
+/// [`Factory<R>`]: crate::Factory<R>
 ///
 /// ```
 /// use runtime_injector::{
@@ -180,6 +183,9 @@ impl Injector {
     ///   services (for instance, factories).
     /// - [`RequestInfo`]: Requests information about the current request,
     ///   including the current resolution path.
+    /// - [`Factory<R>`]: Lazily performs requests on demand.
+    ///
+    /// [`Factory<R>`]: crate::Factory<R>
     ///
     /// See the [documentation for `Request`](Request) for more information on
     /// what can be requested. Custom request types can also be created by
