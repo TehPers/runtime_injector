@@ -1,11 +1,8 @@
-cargo-features = ["edition2021"]
-
 [package]
 name = "runtime_injector"
 version = "0.4.0"
 authors = ["TehPers <tehperz@gmail.com>"]
-edition = "2021"
-# edition = "2018"
+edition = "2018"
 license = "MIT OR Apache-2.0"
 description = "Runtime dependency injection container"
 repository = "https://github.com/TehPers/runtime_injector"
