@@ -222,7 +222,7 @@ impl<'a, I: ?Sized + Interface> Iterator for ServicesIter<'a, I> {
         } = self;
 
         provider_iter
-            .filter_map(|provider| {
+            .find_map(|provider| {
                 match provider.provide(injector, request_info) {
                     Ok(result) => Some(I::downcast(result)),
                     Err(InjectError::ConditionsNotMet { .. }) => None,
@@ -237,7 +237,6 @@ impl<'a, I: ?Sized + Interface> Iterator for ServicesIter<'a, I> {
                     Err(error) => Some(Err(error)),
                 }
             })
-            .next()
     }
 
     fn size_hint(&self) -> (usize, Option<usize>) {
@@ -295,7 +294,7 @@ impl<'a, I: ?Sized + Interface> Iterator for OwnedServicesIter<'a, I> {
         } = self;
 
         provider_iter
-            .filter_map(|provider| {
+            .find_map(|provider| {
                 match provider.provide_owned(injector, request_info) {
                     Ok(result) => Some(I::downcast_owned(result)),
                     Err(InjectError::ConditionsNotMet { .. }) => None,
@@ -310,6 +309,9 @@ impl<'a, I: ?Sized + Interface> Iterator for OwnedServicesIter<'a, I> {
                     Err(error) => Some(Err(error)),
                 }
             })
-            .next()
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        (0, Some(self.provider_iter.len()))
     }
 }
