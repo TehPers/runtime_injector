@@ -65,16 +65,14 @@ impl<I: ?Sized + Interface> Services<I> {
     ) -> InjectResult<Self> {
         let service_info = ServiceInfo::of::<I>();
         let providers = provider_map.with_inner_mut(|provider_map| {
-            provider_map
+            let providers = provider_map
                 .get_mut(&service_info)
-                .map(|providers| {
-                    providers.take().ok_or_else(|| InjectError::CycleDetected {
-                        service_info,
-                        cycle: vec![service_info],
-                    })
-                })
-                .transpose()?
-                .ok_or(InjectError::MissingProvider { service_info })
+                .ok_or(InjectError::MissingProvider { service_info })?;
+
+            providers.take().ok_or_else(|| InjectError::CycleDetected {
+                service_info,
+                cycle: vec![service_info],
+            })
         })?;
 
         Ok(Services {
@@ -113,24 +111,24 @@ impl<I: ?Sized + Interface> Services<I> {
         }
     }
 
-    /// Gets the number of implementations of this interface.
+    /// Gets the max number of possible implementations of this interface. This
+    /// does not take into account conditional providers, which may not return
+    /// an implementation of the service.
     #[must_use]
     #[allow(clippy::missing_panics_doc)]
     pub fn len(&self) -> usize {
-        self.providers
-            .as_ref()
-            .unwrap() // Should never panic
-            .len()
+        // Should never panic
+        self.providers.as_ref().unwrap().len()
     }
 
-    /// Returns `true` if there are no implementations of this interface.
+    /// Returns `true` if there are no possible implementations of this
+    /// interface. This does not take into account conditional providers, which
+    /// may not return an implementation of the service.
     #[must_use]
     #[allow(clippy::missing_panics_doc)]
     pub fn is_empty(&self) -> bool {
-        self.providers
-            .as_ref()
-            .unwrap() // Should never panic
-            .is_empty()
+        // Should never panic
+        self.providers.as_ref().unwrap().is_empty()
     }
 }
 
@@ -152,7 +150,8 @@ impl<I: ?Sized + Interface> Drop for Services<I> {
                     ))
                 })?;
 
-            #[allow(clippy::missing_panics_doc)] // Should never panic
+            // Should never panic
+            #[allow(clippy::missing_panics_doc)]
             if provider_entry.replace(providers.take().unwrap()).is_some() {
                 Err(InjectError::InternalError(format!(
                     "another provider for {} was added during its activation",
@@ -221,22 +220,21 @@ impl<'a, I: ?Sized + Interface> Iterator for ServicesIter<'a, I> {
             ..
         } = self;
 
-        provider_iter
-            .find_map(|provider| {
-                match provider.provide(injector, request_info) {
-                    Ok(result) => Some(I::downcast(result)),
-                    Err(InjectError::ConditionsNotMet { .. }) => None,
-                    Err(InjectError::CycleDetected { mut cycle, .. }) => {
-                        let service_info = ServiceInfo::of::<I>();
-                        cycle.push(service_info);
-                        Some(Err(InjectError::CycleDetected {
-                            service_info,
-                            cycle,
-                        }))
-                    }
-                    Err(error) => Some(Err(error)),
+        provider_iter.find_map(|provider| {
+            match provider.provide(injector, request_info) {
+                Ok(result) => Some(I::downcast(result)),
+                Err(InjectError::ConditionsNotMet { .. }) => None,
+                Err(InjectError::CycleDetected { mut cycle, .. }) => {
+                    let service_info = ServiceInfo::of::<I>();
+                    cycle.push(service_info);
+                    Some(Err(InjectError::CycleDetected {
+                        service_info,
+                        cycle,
+                    }))
                 }
-            })
+                Err(error) => Some(Err(error)),
+            }
+        })
     }
 
     fn size_hint(&self) -> (usize, Option<usize>) {
@@ -293,22 +291,21 @@ impl<'a, I: ?Sized + Interface> Iterator for OwnedServicesIter<'a, I> {
             ..
         } = self;
 
-        provider_iter
-            .find_map(|provider| {
-                match provider.provide_owned(injector, request_info) {
-                    Ok(result) => Some(I::downcast_owned(result)),
-                    Err(InjectError::ConditionsNotMet { .. }) => None,
-                    Err(InjectError::CycleDetected { mut cycle, .. }) => {
-                        let service_info = ServiceInfo::of::<I>();
-                        cycle.push(service_info);
-                        Some(Err(InjectError::CycleDetected {
-                            service_info,
-                            cycle,
-                        }))
-                    }
-                    Err(error) => Some(Err(error)),
+        provider_iter.find_map(|provider| {
+            match provider.provide_owned(injector, request_info) {
+                Ok(result) => Some(I::downcast_owned(result)),
+                Err(InjectError::ConditionsNotMet { .. }) => None,
+                Err(InjectError::CycleDetected { mut cycle, .. }) => {
+                    let service_info = ServiceInfo::of::<I>();
+                    cycle.push(service_info);
+                    Some(Err(InjectError::CycleDetected {
+                        service_info,
+                        cycle,
+                    }))
                 }
-            })
+                Err(error) => Some(Err(error)),
+            }
+        })
     }
 
     fn size_hint(&self) -> (usize, Option<usize>) {

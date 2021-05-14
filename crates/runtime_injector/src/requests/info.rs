@@ -66,9 +66,9 @@ impl RequestInfo {
     /// let foo: Svc<Foo> = injector.get().unwrap();
     /// let bar: Svc<Bar> = injector.get().unwrap();
     /// let baz: Svc<Baz> = injector.get().unwrap();
-    ///
-    /// assert_eq!(1, foo.0 .0);
-    /// assert_eq!(2, bar.0 .0);
+    #[rustfmt::skip]
+    /// assert_eq!(1, foo.0.0);
+    /// assert_eq!(2, bar.0.0);
     /// assert_eq!(0, baz.0);
     /// ```
     #[must_use]
