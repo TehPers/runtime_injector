@@ -55,7 +55,7 @@ impl Module {
 /// ```
 /// use runtime_injector::{
 ///     define_module, interface, Arg, Injector, IntoSingleton, IntoTransient,
-///     Svc,
+///     Svc, Service
 /// };
 ///
 /// struct Foo(Arg<i32>);
@@ -64,7 +64,7 @@ impl Module {
 /// #[cfg(test)]
 /// struct Quux();
 ///
-/// trait Fooable: Send + Sync {}
+/// trait Fooable: Service {}
 /// impl Fooable for Foo {}
 /// impl Fooable for Bar {}
 /// interface! {

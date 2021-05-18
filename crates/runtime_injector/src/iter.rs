@@ -17,10 +17,10 @@ use std::{marker::PhantomData, slice::IterMut};
 ///
 /// ```
 /// use runtime_injector::{
-///     interface, Injector, IntoTransient, Services, Svc, TypedProvider,
+///     interface, Injector, IntoTransient, Services, Svc, TypedProvider, Service
 /// };
 ///
-/// trait Fooable: Send + Sync {
+/// trait Fooable: Service {
 ///     fn baz(&self) {}
 /// }
 ///

@@ -2,7 +2,7 @@
 
 use crate::{
     constant, interface, InjectError, InjectResult, Injector, IntoSingleton,
-    IntoTransient, RequestInfo, ServiceInfo, Services, Svc, TypedProvider,
+    IntoTransient, RequestInfo, ServiceInfo, Services, Svc, TypedProvider, Service
 };
 use std::sync::Mutex;
 
@@ -138,13 +138,7 @@ fn constants() {
 
 #[test]
 fn interfaces() {
-    #[cfg(feature = "rc")]
-    pub trait Foo {
-        fn bar(&self) -> i32;
-    }
-
-    #[cfg(feature = "arc")]
-    pub trait Foo: Send + Sync {
+    pub trait Foo: Service {
         fn bar(&self) -> i32;
     }
 
@@ -213,11 +207,7 @@ fn interfaces() {
 
 #[test]
 fn multi_injection() {
-    #[cfg(feature = "rc")]
-    trait Foo {}
-
-    #[cfg(feature = "arc")]
-    trait Foo: Send + Sync {}
+    trait Foo: Service {}
 
     impl Foo for Svc1 {}
     impl Foo for Svc2 {}

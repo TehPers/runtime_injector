@@ -116,7 +116,7 @@
 //! ```
 //! use runtime_injector::{
 //!     define_module, Module, interface, Injector, Svc, IntoSingleton,
-//!     TypedProvider, IntoTransient, constant
+//!     TypedProvider, IntoTransient, constant, Service
 //! };
 //! use std::error::Error;
 //!
@@ -130,10 +130,12 @@
 //! // concrete type at runtime (vs. generics, which are determined instead at
 //! // compile time).
 //! //
-//! // The `Send` and `Sync` supertrait requirements are only necessary when
-//! // compiling with the "arc" feature to allow for service pointer
-//! // downcasting.
-//! trait DataService: Send + Sync {
+//! // Since all implementations of this interface must be services for them to
+//! // be injected, we'll add that as a supertrait of `DataService`. With the
+//! // "arc" feature enabled, this means that implementations must be `Send`,
+//! // `Sync`, and `Any` (or 'static), but with the "rc" feature enabled this
+//! // only requires `Any`.
+//! trait DataService: Service {
 //!     fn get_user(&self, user_id: &str) -> Option<User>;
 //! }
 //!

@@ -219,10 +219,10 @@ impl Injector {
     ///
     /// ```
     /// use runtime_injector::{
-    ///     interface, Injector, IntoSingleton, Svc, TypedProvider,
+    ///     interface, Injector, IntoSingleton, Svc, TypedProvider, Service
     /// };
     ///
-    /// trait Foo: Send + Sync {}
+    /// trait Foo: Service {}
     /// interface!(dyn Foo = [Bar]);
     ///
     /// #[derive(Default)]
@@ -241,10 +241,10 @@ impl Injector {
     ///
     /// ```
     /// use runtime_injector::{
-    ///     interface, Injector, IntoSingleton, Svc, TypedProvider,
+    ///     interface, Injector, IntoSingleton, Svc, TypedProvider, Service
     /// };
     ///
-    /// trait Foo: Send + Sync {}
+    /// trait Foo: Service {}
     /// interface!(dyn Foo = [Bar, Baz]);
     ///
     /// #[derive(Default)]
