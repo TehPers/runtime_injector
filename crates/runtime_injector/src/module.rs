@@ -55,7 +55,7 @@ impl Module {
 /// ```
 /// use runtime_injector::{
 ///     define_module, interface, Arg, Injector, IntoSingleton, IntoTransient,
-///     Svc, Service
+///     Service, Svc,
 /// };
 ///
 /// struct Foo(Arg<i32>);

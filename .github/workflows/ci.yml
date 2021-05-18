@@ -10,6 +10,23 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
+  fmt:
+    name: Check formatting
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+      - name: Setup toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: nightly
+          components: rustfmt
+      - name: Check formatting
+        run: >-
+          cargo fmt
+          --
+          --check
+
   test:
     name: Rust ${{ matrix.rust_version }} (${{ matrix.package }} - ${{ matrix.features }})
     runs-on: ubuntu-latest

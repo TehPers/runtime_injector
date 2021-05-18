@@ -2,7 +2,8 @@
 
 use crate::{
     constant, interface, InjectError, InjectResult, Injector, IntoSingleton,
-    IntoTransient, RequestInfo, ServiceInfo, Services, Svc, TypedProvider, Service
+    IntoTransient, RequestInfo, Service, ServiceInfo, Services, Svc,
+    TypedProvider,
 };
 use std::sync::Mutex;
 
