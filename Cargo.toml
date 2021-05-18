@@ -1,3 +1,2 @@
 [workspace]
 members = ["crates/runtime_injector", "crates/runtime_injector_actix"]
-resolver = "2"
