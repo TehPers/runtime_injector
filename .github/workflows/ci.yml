@@ -29,6 +29,11 @@ jobs:
         uses: dtolnay/rust-toolchain@stable
         with:
           toolchain: ${{ matrix.rust_version }}
+      - name: Check formatting
+        run: >-
+          cargo fmt
+          --
+          --check
       - name: Run tests
         run: >-
           cargo test
