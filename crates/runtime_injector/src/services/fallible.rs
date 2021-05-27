@@ -28,7 +28,7 @@ where
     type Result = R;
 
     fn invoke(
-        &mut self,
+        &self,
         injector: &Injector,
         request_info: &RequestInfo,
     ) -> InjectResult<Self::Result> {

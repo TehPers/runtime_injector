@@ -108,6 +108,7 @@ fn singleton() {
 
     assert_ne!(svc1.0, svc2.dep1.0);
     assert_ne!(svc1.0, svc3.dep1.0);
+    assert_ne!(svc1.0, svc3.dep2.dep1.0);
     assert_ne!(svc2.dep1.0, svc3.dep1.0);
 }
 
@@ -134,6 +135,7 @@ fn constants() {
 
     assert_ne!(svc1.0, svc2.dep1.0);
     assert_ne!(svc1.0, svc3.dep1.0);
+    assert_ne!(svc1.0, svc3.dep2.dep1.0);
     assert_ne!(svc2.dep1.0, svc3.dep1.0);
 }
 

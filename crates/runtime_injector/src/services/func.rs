@@ -25,13 +25,13 @@ use crate::{
 /// factory.invoke(&injector, &RequestInfo::new());
 /// # }
 /// ```
-pub trait ServiceFactory<D>: Service {
+pub trait ServiceFactory<D> {
     /// The resulting service from invoking this service factory.
     type Result: Service;
 
     /// Invokes this service factory, creating an instance of the service.
     fn invoke(
-        &mut self,
+        &self,
         injector: &Injector,
         request_info: &RequestInfo,
     ) -> InjectResult<Self::Result>;
@@ -48,7 +48,7 @@ macro_rules! impl_provider_function {
     (@impl ($($type_name:ident),*)) => {
         impl<F, R $(, $type_name)*> ServiceFactory<($($type_name,)*)> for F
         where
-            F: Service + FnMut($($type_name),*) -> R,
+            F: Fn($($type_name),*) -> R,
             R: Service,
             $($type_name: Request,)*
         {
@@ -56,7 +56,7 @@ macro_rules! impl_provider_function {
 
             #[allow(unused_variables, unused_mut, unused_assignments, non_snake_case)]
             fn invoke(
-                &mut self,
+                &self,
                 injector: &Injector,
                 request_info: &RequestInfo
             ) -> InjectResult<Self::Result> {
