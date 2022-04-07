@@ -7,6 +7,9 @@ pub trait AsAny: Any {
 
     /// Converts `self` into a mutable trait object.
     fn as_any_mut(&mut self) -> &mut dyn Any;
+
+    /// Converts `Box<Self>` into a trait object.
+    fn into_any(self: Box<Self>) -> Box<dyn Any>;
 }
 
 impl<T: Any> AsAny for T {
@@ -15,6 +18,10 @@ impl<T: Any> AsAny for T {
     }
 
     fn as_any_mut(&mut self) -> &mut dyn Any {
+        self
+    }
+
+    fn into_any(self: Box<Self>) -> Box<dyn Any> {
         self
     }
 }
