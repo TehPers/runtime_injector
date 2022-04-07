@@ -112,6 +112,7 @@ impl ServiceInfo {
 
 /// An error that has occurred during creation of a service.
 #[derive(Debug)]
+#[non_exhaustive]
 pub enum InjectError {
     /// Failed to find a provider for the requested type.
     MissingProvider {

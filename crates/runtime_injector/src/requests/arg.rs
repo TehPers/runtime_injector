@@ -87,6 +87,7 @@ impl<T: Service + AsAny + Clone> Request for Arg<T> {
 
 /// An error occurred while injecting an instance of [`Arg<T>`].
 #[derive(Debug)]
+#[non_exhaustive]
 pub enum ArgRequestError {
     /// The argument value was not provided.
     MissingParameter,
