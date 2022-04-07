@@ -126,10 +126,11 @@ impl Default for RequestInfo {
 
 impl Debug for RequestInfo {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        // TODO: maybe use finish_non_exhaustive when 1.53 hits stable
         f.debug_struct("RequestInfo")
             .field("service_path", &self.service_path)
-            .finish()
+            .finish_non_exhaustive()
+    }
+}
 
 #[cfg(test)]
 mod tests {
