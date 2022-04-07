@@ -128,20 +128,6 @@ impl Injector {
         InjectorBuilder::default()
     }
 
-    /// Creates a new injector directly from its providers and implementations.
-    /// Prefer [`Injector::builder()`] for creating new injectors instead.
-    #[must_use]
-    #[deprecated(
-        note = "prefer using a builder; this will be removed in 0.5",
-        since = "0.3.1"
-    )]
-    pub fn new(providers: ProviderMap) -> Self {
-        Injector {
-            provider_map: MapContainerEx::new(providers),
-            root_request_info: Svc::new(RequestInfo::default()),
-        }
-    }
-
     pub(crate) fn new_from_parts(
         providers: ProviderMap,
         request_info: RequestInfo,
