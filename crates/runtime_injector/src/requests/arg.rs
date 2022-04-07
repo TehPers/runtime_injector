@@ -25,6 +25,7 @@ use std::{
 /// let foo: Box<Foo> = injector.get().unwrap();
 /// assert_eq!(12, *foo.0);
 /// ```
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug, Hash)]
 pub struct Arg<T: Service + AsAny + Clone>(T);
 
 impl<T: Service + AsAny + Clone> Arg<T> {
@@ -53,6 +54,12 @@ impl<T: Service + AsAny + Clone> Deref for Arg<T> {
 impl<T: Service + AsAny + Clone> DerefMut for Arg<T> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.0
+    }
+}
+
+impl<T: Display + Service + AsAny + Clone> Display for Arg<T> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.0)
     }
 }
 
