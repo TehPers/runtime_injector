@@ -108,3 +108,40 @@ where
         func.singleton()
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use std::sync::Mutex;
+    use super::*;
+
+    #[derive(PartialEq, Eq, Debug)]
+    struct Foo(i32);
+
+    /// Singleton provider provides the correct value.
+    #[test]
+    fn singleton_provider_provides_correct_value() {
+        let mut builder = Injector::builder();
+        builder.provide((|| Foo(42)).singleton());
+
+        let injector = builder.build();
+        let foo: Svc<Foo> = injector.get().unwrap();
+        assert_eq!(&*foo, &Foo(42));
+    }
+
+    /// When value is mutated, the provider returns the mutated value.
+    #[test]
+    fn singleton_provider_returns_mutated_value() {
+        let mut builder = Injector::builder();
+        builder.provide((|| Mutex::new(Foo(0))).singleton());
+
+        let injector = builder.build();
+        let foo: Svc<Mutex<Foo>> = injector.get().unwrap();
+        let mut foo = foo.lock().unwrap();
+        foo.0 = 42;
+        drop(foo);
+
+        let foo: Svc<Mutex<Foo>> = injector.get().unwrap();
+        let foo = foo.lock().unwrap();
+        assert_eq!(&*foo, &Foo(42));
+    }
+}

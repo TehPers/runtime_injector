@@ -99,3 +99,80 @@ where
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use std::sync::Mutex;
+
+    use super::*;
+    use crate::IntoSingleton;
+
+    #[derive(Default)]
+    struct Foo;
+
+    /// When condition returns true, then a value is provided.
+    #[test]
+    fn test_condition_true() {
+        let mut builder = Injector::builder();
+        builder.provide(Foo::default.singleton().with_condition(|_, _| true));
+
+        let injector = builder.build();
+        let foo: Option<Svc<Foo>> = injector.get().unwrap();
+
+        assert!(foo.is_some());
+    }
+
+    /// When condition returns true only once, then a value is provided only once.
+    #[test]
+    fn test_condition_true_once() {
+        let mut builder = Injector::builder();
+        let provided = Mutex::new(false);
+        builder.provide(
+            Foo::default.singleton()
+                .with_condition(move |_, _| {
+                    let mut provided = provided.lock().unwrap();
+                    if *provided {
+                        return false;
+                    }
+                    *provided = true;
+                    true
+                }),
+        );
+
+        // Create first value
+        let injector = builder.build();
+        let foo: Option<Svc<Foo>> = injector.get().unwrap();
+        assert!(foo.is_some());
+
+        // Create second value
+        let foo: Option<Svc<Foo>> = injector.get().unwrap();
+        assert!(foo.is_none());
+    }
+
+    /// When condition returns true after returning false, then a value is provided.
+    #[test]
+    fn test_condition_true_after_false() {
+        let mut builder = Injector::builder();
+        let provided = Mutex::new(false);
+        builder.provide(
+            Foo::default.singleton()
+                .with_condition(move |_, _| {
+                    let mut provided = provided.lock().unwrap();
+                    if *provided {
+                        return true;
+                    }
+                    *provided = true;
+                    false
+                }),
+        );
+
+        // Create first value
+        let injector = builder.build();
+        let foo: Option<Svc<Foo>> = injector.get().unwrap();
+        assert!(foo.is_none());
+
+        // Create second value
+        let foo: Option<Svc<Foo>> = injector.get().unwrap();
+        assert!(foo.is_some());
+    }
+}

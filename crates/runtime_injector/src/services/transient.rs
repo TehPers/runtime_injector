@@ -109,3 +109,23 @@ where
         func.transient()
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[derive(PartialEq, Eq, Debug)]
+    struct Foo(i32);
+
+    /// Transient provider provides the correct value.
+    #[test]
+    fn transient_provider_provides_correct_value() {
+        let mut builder = Injector::builder();
+        builder.provide((|| Foo(42)).transient());
+
+        let injector = builder.build();
+        let foo: Svc<Foo> = injector.get().unwrap();
+
+        assert_eq!(&*foo, &Foo(42));
+    }
+}

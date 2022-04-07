@@ -130,5 +130,33 @@ impl Debug for RequestInfo {
         f.debug_struct("RequestInfo")
             .field("service_path", &self.service_path)
             .finish()
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn parameter_is_inserted_then_removed() {
+        let mut info = RequestInfo::new();
+        info.insert_parameter("foo", "bar".to_string());
+        assert_eq!(
+            Some(&"bar".to_string()),
+            info.get_parameter("foo")
+                .map(|p| p.downcast_ref::<String>())
+                .flatten()
+        );
+        assert_eq!(
+            Some(Box::new("bar".to_string())),
+            info.remove_parameter("foo")
+                .map(|p| p.downcast::<String>().ok())
+                .flatten()
+        );
+        assert!(info.get_parameter("foo").is_none());
+    }
+
+    #[test]
+    fn missing_parameter_is_not_removed() {
+        let mut info = RequestInfo::new();
+        assert!(info.remove_parameter("foo").is_none());
     }
 }

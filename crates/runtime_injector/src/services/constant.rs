@@ -98,3 +98,18 @@ impl<T: Service> From<T> for ConstantProvider<T> {
 pub fn constant<T: Service>(value: T) -> ConstantProvider<T> {
     ConstantProvider::new(value)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Constant provider provides the correct value.
+    #[test]
+    fn constant_provider_provides_correct_value() {
+        let mut builder = Injector::builder();
+        builder.provide(constant(8i32));
+        let injector = builder.build();
+        let value: Svc<i32> = injector.get().unwrap();
+        assert_eq!(8, *value);
+    }
+}

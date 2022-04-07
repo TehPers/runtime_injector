@@ -164,12 +164,75 @@ mod tests {
         IntoSingleton, ServiceInfo, Svc,
     };
 
+    #[derive(Debug)]
+    struct Foo(Arg<i32>);
+
     #[test]
     fn request_fails_if_missing_arg() {
+        // Create a module with a single service.
+        let module = define_module! {
+            services = [Foo.singleton()],
+        };
+
+        // Create an injector with the module.
+        let mut builder = Injector::builder();
+        builder.add_module(module);
+
+        // Attempt to get the service.
+        let injector = builder.build();
+        let error = injector.get::<Svc<Foo>>().unwrap_err();
+        match error {
+            InjectError::ActivationFailed {
+                service_info,
+                inner,
+            } => {
+                // Check that the service info is correct.
+                assert_eq!(
+                    ServiceInfo::of::<Arg<i32>>(),
+                    service_info,
+                );
+                
+                // Check that the inner error is correct.
+                match inner.downcast_ref::<ArgRequestError>() {
+                    Some(ArgRequestError::MissingParameter) => (),
+                    _ => panic!("unexpected error: {:?}", inner),
+                }
+            }
+            _ => panic!("unexpected error: {:?}", error),
+        }
+    }
+
+    #[test]
+    fn request_fails_if_arg_has_no_parent_request() {
+        let builder = Injector::builder();
+        let injector = builder.build();
+        match injector.get::<Arg<i32>>() {
+            Ok(_) => unreachable!("request should have failed"),
+            Err(InjectError::ActivationFailed {
+                service_info,
+                inner,
+            }) => {
+                assert_eq!(ServiceInfo::of::<Arg<i32>>(), service_info);
+                let inner: &ArgRequestError =
+                    inner.downcast_ref().expect("failed to downcast error");
+                match inner {
+                    ArgRequestError::NoParentRequest => {}
+                    inner => Err(inner).unwrap(),
+                }
+            }
+            Err(error) => Err(error).unwrap(),
+        }
+    }
+
+    #[test]
+    fn request_fails_if_arg_is_wrong_type() {
         struct Foo(Arg<i32>);
 
         let module = define_module! {
             services = [Foo.singleton()],
+            arguments = {
+                Foo = [42u32],
+            },
         };
 
         let mut builder = Injector::builder();
@@ -195,24 +258,21 @@ mod tests {
     }
 
     #[test]
-    fn request_fails_if_arg_has_no_parent_request() {
-        let builder = Injector::builder();
+    fn request_succeeds_if_arg_is_correct_type() {
+        struct Foo(Arg<i32>);
+
+        let module = define_module! {
+            services = [Foo.singleton()],
+            arguments = {
+                Foo = [42i32],
+            },
+        };
+
+        let mut builder = Injector::builder();
+        builder.add_module(module);
+
         let injector = builder.build();
-        match injector.get::<Arg<i32>>() {
-            Ok(_) => unreachable!("request should have failed"),
-            Err(InjectError::ActivationFailed {
-                service_info,
-                inner,
-            }) => {
-                assert_eq!(ServiceInfo::of::<Arg<i32>>(), service_info);
-                let inner: &ArgRequestError =
-                    inner.downcast_ref().expect("failed to downcast error");
-                match inner {
-                    ArgRequestError::NoParentRequest => {}
-                    inner => Err(inner).unwrap(),
-                }
-            }
-            Err(error) => Err(error).unwrap(),
-        }
+        let foo = injector.get::<Svc<Foo>>().unwrap();
+        assert_eq!(42, foo.0.0);
     }
 }
