@@ -1,3 +1,5 @@
+use crate::interface;
+use downcast_rs::{impl_downcast, DowncastSync};
 use std::{
     any::{Any, TypeId},
     error::Error,
@@ -29,37 +31,28 @@ feature_unique!(
         /// - **arc**: Pointer type is [`Arc<T>`](std::sync::Arc) (default)
     },
     {
+        #[cfg_attr(
+            not(doc),
+            doc = "",
+            doc = "The current pointer type is [`Rc<T>`](std::rc::Rc)."
+        )]
         pub type Svc<T> = std::rc::Rc<T>;
     },
     {
+        #[cfg_attr(
+            not(doc),
+            doc = "",
+            doc = "The current pointer type is [`Arc<T>`](std::sync::Arc)."
+        )]
         pub type Svc<T> = std::sync::Arc<T>;
     }
 );
 
-feature_unique!(
-    {
-        /// A reference-counted service pointer holding an instance of `dyn
-        /// Any`.
-    },
-    {
-        pub type DynSvc = Svc<dyn Any>;
-    },
-    {
-        pub type DynSvc = Svc<dyn Any + Send + Sync>;
-    }
-);
+/// A service pointer holding an instance of `dyn Service`.
+pub type DynSvc = Svc<dyn Service>;
 
-feature_unique!(
-    {
-        /// An owned service pointer holding an instance of `dyn Any`.
-    },
-    {
-        pub type OwnedDynSvc = Box<dyn Any>;
-    },
-    {
-        pub type OwnedDynSvc = Box<dyn Any + Send + Sync>;
-    }
-);
+/// An owned service pointer holding an instance of `dyn Service`.
+pub type OwnedDynSvc = Box<dyn Service>;
 
 feature_unique!(
     {
@@ -67,14 +60,22 @@ feature_unique!(
         /// service.
     },
     {
-        pub trait Service: Any {}
-        impl<T: ?Sized + Any> Service for T {}
+        pub trait Service: Downcast {}
+        impl<T: ?Sized + Downcast> Service for T {}
     },
     {
-        pub trait Service: Any + Send + Sync {}
-        impl<T: ?Sized + Any + Send + Sync> Service for T {}
+        pub trait Service: DowncastSync {}
+        impl<T: ?Sized + DowncastSync> Service for T {}
     }
 );
+
+interface!(Service);
+
+#[cfg(feature = "arc")]
+impl_downcast!(sync Service);
+
+#[cfg(feature = "rc")]
+impl_downcast!(Service);
 
 /// A result from attempting to inject dependencies into a service and
 /// construct an instance of it.
@@ -89,6 +90,7 @@ pub struct ServiceInfo {
 
 impl ServiceInfo {
     /// Creates a [`ServiceInfo`] for the given type.
+    #[inline]
     #[must_use]
     pub fn of<T: ?Sized + Any>() -> Self {
         ServiceInfo {
@@ -98,12 +100,14 @@ impl ServiceInfo {
     }
 
     /// Gets the [`TypeId`] for this service.
+    #[inline]
     #[must_use]
     pub fn id(&self) -> TypeId {
         self.id
     }
 
     /// Gets the type name of this service.
+    #[inline]
     #[must_use]
     pub fn name(&self) -> &'static str {
         self.name
@@ -262,7 +266,7 @@ impl Display for InjectError {
                 write!(f, "an error occurred during activation of {}", service_info.name())
             },
             InjectError::InternalError(message) => {
-                write!(f, "an unexpected error occurred (please report this): {}", message)
+                write!(f, "an unexpected error occurred (please report this to https://github.com/TehPers/runtime_injector/issues): {message}")
             },
         }
     }

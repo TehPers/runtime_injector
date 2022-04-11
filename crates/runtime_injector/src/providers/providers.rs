@@ -1,17 +1,18 @@
-use std::marker::PhantomData;
-
 use crate::{
-    DynSvc, InjectError, InjectResult, Injector, Interface, InterfaceFor,
-    OwnedDynSvc, RequestInfo, Service, ServiceInfo, Svc,
+    InjectError, InjectResult, Injector, Interface, InterfaceFor, RequestInfo,
+    Service, ServiceInfo, Svc,
 };
 
 /// Weakly typed service provider.
 ///
-/// Given an injector, this can provide an instance of a service. This is
+/// Given an injector, this can provide an instance of an interface. This is
 /// automatically implemented for all types that implement [`TypedProvider`],
 /// and [`TypedProvider`] should be preferred if possible for custom service
 /// providers to allow for stronger type checking.
 pub trait Provider: Service {
+    /// The interface this provider is providing for.
+    type Interface: ?Sized + Interface;
+
     /// The [`ServiceInfo`] which describes the type returned by this provider.
     fn result(&self) -> ServiceInfo;
 
@@ -20,14 +21,14 @@ pub trait Provider: Service {
         &mut self,
         injector: &Injector,
         request_info: &RequestInfo,
-    ) -> InjectResult<DynSvc>;
+    ) -> InjectResult<Svc<Self::Interface>>;
 
     /// Provides an owned instance of the service.
     fn provide_owned(
         &mut self,
         _injector: &Injector,
         _request_info: &RequestInfo,
-    ) -> InjectResult<OwnedDynSvc> {
+    ) -> InjectResult<Box<Self::Interface>> {
         Err(InjectError::OwnedNotSupported {
             service_info: self.result(),
         })
@@ -38,6 +39,8 @@ impl<T> Provider for T
 where
     T: TypedProvider,
 {
+    type Interface = <T as TypedProvider>::Interface;
+
     fn result(&self) -> ServiceInfo {
         ServiceInfo::of::<T::Result>()
     }
@@ -46,18 +49,18 @@ where
         &mut self,
         injector: &Injector,
         request_info: &RequestInfo,
-    ) -> InjectResult<DynSvc> {
-        let result = self.provide_typed(injector, request_info)?;
-        Ok(result as DynSvc)
+    ) -> InjectResult<Svc<Self::Interface>> {
+        let service = self.provide_typed(injector, request_info)?;
+        Ok(Self::Interface::from_svc(service))
     }
 
     fn provide_owned(
         &mut self,
         injector: &Injector,
         request_info: &RequestInfo,
-    ) -> InjectResult<OwnedDynSvc> {
-        let result = self.provide_owned_typed(injector, request_info)?;
-        Ok(result as OwnedDynSvc)
+    ) -> InjectResult<Box<Self::Interface>> {
+        let service = self.provide_owned_typed(injector, request_info)?;
+        Ok(Self::Interface::from_owned_svc(service))
     }
 }
 
@@ -98,9 +101,14 @@ where
 /// let injector = builder.build();
 /// let _foo: Svc<Foo> = injector.get().unwrap();
 /// ```
-pub trait TypedProvider: Sized + Provider {
+pub trait TypedProvider:
+    Sized + Provider<Interface = <Self as TypedProvider>::Interface>
+{
+    /// The interface this provider is providing for.
+    type Interface: ?Sized + InterfaceFor<Self::Result>;
+
     /// The type of service this can provide.
-    type Result: Interface;
+    type Result: Service;
 
     /// Provides an instance of the service. The [`Injector`] passed in can be
     /// used to retrieve instances of any dependencies this service has.
@@ -120,87 +128,5 @@ pub trait TypedProvider: Sized + Provider {
         Err(InjectError::OwnedNotSupported {
             service_info: ServiceInfo::of::<Self::Result>(),
         })
-    }
-
-    /// Provides this service as an implementation of a particular interface.
-    /// Rather than requesting this service with its concrete type, it can
-    /// instead be requested by its interface type.
-    ///
-    /// *Note: it cannot be requested with its concrete type once it has been
-    /// assigned an interface.*
-    ///
-    /// ## Example
-    ///
-    /// ```
-    /// use runtime_injector::{
-    ///     interface, InjectResult, Injector, IntoSingleton, Service, Svc,
-    ///     TypedProvider,
-    /// };
-    ///
-    /// trait Fooable: Service {
-    ///     fn bar(&self) {}
-    /// }
-    ///
-    /// interface!(dyn Fooable = [Foo]);
-    ///
-    /// #[derive(Default)]
-    /// struct Foo;
-    /// impl Fooable for Foo {}
-    ///
-    /// let mut builder = Injector::builder();
-    /// builder.provide(Foo::default.singleton().with_interface::<dyn Fooable>());
-    ///
-    /// // Foo can now be requested through its interface of `dyn Fooable`.
-    /// let injector = builder.build();
-    /// let fooable: Svc<dyn Fooable> = injector.get().unwrap();
-    /// fooable.bar();
-    ///
-    /// // It can't be requested through its original type
-    /// assert!(injector.get::<Svc<Foo>>().is_err());
-    /// ```
-    fn with_interface<I: ?Sized + InterfaceFor<Self::Result>>(
-        self,
-    ) -> InterfaceProvider<I, Self> {
-        InterfaceProvider {
-            inner: self,
-            marker: PhantomData,
-        }
-    }
-}
-
-/// Provides a service as an implementation of an interface. See
-/// [`TypedProvider::with_interface()`] for more information.
-pub struct InterfaceProvider<I, P>
-where
-    P: TypedProvider,
-    I: ?Sized + InterfaceFor<P::Result>,
-{
-    inner: P,
-    marker: PhantomData<fn() -> I>,
-}
-
-impl<I, P> Provider for InterfaceProvider<I, P>
-where
-    P: TypedProvider,
-    I: ?Sized + InterfaceFor<P::Result>,
-{
-    fn result(&self) -> ServiceInfo {
-        ServiceInfo::of::<I>()
-    }
-
-    fn provide(
-        &mut self,
-        injector: &Injector,
-        request_info: &RequestInfo,
-    ) -> InjectResult<DynSvc> {
-        self.inner.provide(injector, request_info)
-    }
-
-    fn provide_owned(
-        &mut self,
-        injector: &Injector,
-        request_info: &RequestInfo,
-    ) -> InjectResult<OwnedDynSvc> {
-        self.inner.provide_owned(injector, request_info)
     }
 }

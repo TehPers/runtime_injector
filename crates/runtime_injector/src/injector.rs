@@ -1,11 +1,9 @@
 use crate::{
-    InjectResult, InjectorBuilder, Interface, Provider, Request, RequestInfo,
-    ServiceInfo, Services, Svc,
+    FromProvider, InjectError, InjectResult, InjectorBuilder, Interface,
+    InterfaceRegistry, Provider, Request, RequestInfo, ServiceInfo, Services,
+    Svc,
 };
-use std::collections::HashMap;
-
-pub(crate) type ProviderMap =
-    HashMap<ServiceInfo, Option<Vec<Box<dyn Provider>>>>;
+use std::ops::{Deref, DerefMut};
 
 pub(crate) trait MapContainerEx<T> {
     fn new(value: T) -> Self;
@@ -116,7 +114,7 @@ pub(crate) use types::*;
 /// ```
 #[derive(Clone, Default)]
 pub struct Injector {
-    provider_map: MapContainer<ProviderMap>,
+    interface_registry: MapContainer<InterfaceRegistry>,
     root_request_info: Svc<RequestInfo>,
 }
 
@@ -129,11 +127,11 @@ impl Injector {
     }
 
     pub(crate) fn new_from_parts(
-        providers: ProviderMap,
+        interface_registry: InterfaceRegistry,
         request_info: RequestInfo,
     ) -> Self {
         Injector {
-            provider_map: MapContainerEx::new(providers),
+            interface_registry: MapContainerEx::new(interface_registry),
             root_request_info: Svc::new(request_info),
         }
     }
@@ -293,15 +291,77 @@ impl Injector {
 
     /// Gets implementations of a service from the container. This is
     /// equivalent to requesting [`Services<T>`] from [`Injector::get()`].
-    pub(crate) fn get_service<I: ?Sized + Interface>(
+    #[doc(hidden)]
+    pub fn get_all<S: ?Sized + FromProvider>(
         &self,
         request_info: &RequestInfo,
-    ) -> InjectResult<Services<I>> {
-        Services::new(
-            self.clone(),
-            self.provider_map.clone(),
-            request_info.clone(),
-        )
+    ) -> InjectResult<Services<S>> {
+        let service_info = ServiceInfo::of::<S>();
+        let providers = self.interface_registry.with_inner_mut(|registry| {
+            Ok(ProvidersLease {
+                parent_registry: self.interface_registry.clone(),
+                providers: registry.take_providers_for(service_info)?,
+            })
+        })?;
+
+        Ok(Services::new(self.clone(), request_info.clone(), providers))
+    }
+}
+
+pub(crate) struct ProvidersLease<I>
+where
+    I: ?Sized + Interface,
+{
+    parent_registry: MapContainer<InterfaceRegistry>,
+    providers: Vec<Box<dyn Provider<Interface = I>>>,
+}
+
+impl<I> Deref for ProvidersLease<I>
+where
+    I: ?Sized + Interface,
+{
+    type Target = [Box<dyn Provider<Interface = I>>];
+
+    fn deref(&self) -> &Self::Target {
+        self.providers.as_slice()
+    }
+}
+
+impl<I> DerefMut for ProvidersLease<I>
+where
+    I: ?Sized + Interface,
+{
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        self.providers.as_mut_slice()
+    }
+}
+
+impl<I> Drop for ProvidersLease<I>
+where
+    I: ?Sized + Interface,
+{
+    fn drop(&mut self) {
+        let providers = std::mem::take(&mut self.providers);
+        let result = self
+            .parent_registry
+            .lock()
+            .map_err(|_| {
+                InjectError::InternalError(
+                    "failed to acquire lock for interface registry".into(),
+                )
+            })
+            .and_then(|mut registry| {
+                registry
+                    .reclaim_providers_for(ServiceInfo::of::<I>(), providers)
+            });
+
+        if let Err(error) = result {
+            eprintln!(
+                "An error occurred while releasing providiers for {}: {}",
+                ServiceInfo::of::<I>().name(),
+                error
+            );
+        }
     }
 }
 
@@ -309,7 +369,7 @@ impl Injector {
 mod tests {
     use crate::{
         DynSvc, InjectError, InjectResult, Injector, Provider, RequestInfo,
-        ServiceInfo, Svc,
+        Service, ServiceInfo, Svc,
     };
     use core::panic;
 
@@ -317,6 +377,8 @@ mod tests {
     fn get_exact_returns_error_on_invalid_provider() {
         struct BadProvider;
         impl Provider for BadProvider {
+            type Interface = dyn Service;
+
             fn result(&self) -> ServiceInfo {
                 ServiceInfo::of::<i32>()
             }

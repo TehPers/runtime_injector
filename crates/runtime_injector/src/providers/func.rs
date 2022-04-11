@@ -1,6 +1,5 @@
-use crate::{
-    InjectResult, Injector, Request, RequestInfo, Service, ServiceInfo,
-};
+use crate::{InjectResult, Injector, Request, RequestInfo, ServiceInfo};
+use std::any::Any;
 
 /// A factory for creating instances of a service. All functions of arity 12 or
 /// less are automatically service factories if the arguments to that function
@@ -27,7 +26,7 @@ use crate::{
 /// ```
 pub trait ServiceFactory<D> {
     /// The resulting service from invoking this service factory.
-    type Result: Service;
+    type Result: Any;
 
     /// Invokes this service factory, creating an instance of the service.
     fn invoke(
@@ -49,7 +48,7 @@ macro_rules! impl_provider_function {
         impl<F, R $(, $type_name)*> ServiceFactory<($($type_name,)*)> for F
         where
             F: Fn($($type_name),*) -> R,
-            R: Service,
+            R: Any,
             $($type_name: Request,)*
         {
             type Result = F::Output;

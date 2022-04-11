@@ -15,3 +15,6 @@ exclude = []
 default = ["arc"]
 arc = [] # Svc<T> = Arc<T>
 rc = [] # Svc<T> = Rc<T>
+
+[dependencies]
+downcast-rs = "1"

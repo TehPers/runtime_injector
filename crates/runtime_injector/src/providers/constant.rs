@@ -27,6 +27,7 @@ impl<R> TypedProvider for ConstantProvider<R>
 where
     R: Service,
 {
+    type Interface = dyn Service;
     type Result = R;
 
     fn provide_typed(

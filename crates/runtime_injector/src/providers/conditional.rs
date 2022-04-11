@@ -22,6 +22,7 @@ where
     P: TypedProvider,
     F: Service + Fn(&Injector, &RequestInfo) -> bool,
 {
+    type Interface = <P as TypedProvider>::Interface;
     type Result = P::Result;
 
     #[inline]
@@ -56,7 +57,7 @@ where
 }
 
 /// Defines a conversion into a conditional provider. This trait is
-/// automatically implemented for all types that implement [`TypedProvider`].
+/// automatically implemented for all types that implement [`TypedProvider<I>`].
 pub trait WithCondition: TypedProvider {
     /// Creates a conditional provider. Conditional providers create their
     /// values only if their condition is met. If the condition is not met,
@@ -127,17 +128,16 @@ mod tests {
     fn test_condition_true_once() {
         let mut builder = Injector::builder();
         let provided = Mutex::new(false);
-        builder.provide(
-            Foo::default.singleton()
-                .with_condition(move |_, _| {
-                    let mut provided = provided.lock().unwrap();
-                    if *provided {
-                        return false;
-                    }
-                    *provided = true;
-                    true
-                }),
-        );
+        builder.provide(Foo::default.singleton().with_condition(
+            move |_, _| {
+                let mut provided = provided.lock().unwrap();
+                if *provided {
+                    return false;
+                }
+                *provided = true;
+                true
+            },
+        ));
 
         // Create first value
         let injector = builder.build();
@@ -154,17 +154,16 @@ mod tests {
     fn test_condition_true_after_false() {
         let mut builder = Injector::builder();
         let provided = Mutex::new(false);
-        builder.provide(
-            Foo::default.singleton()
-                .with_condition(move |_, _| {
-                    let mut provided = provided.lock().unwrap();
-                    if *provided {
-                        return true;
-                    }
-                    *provided = true;
-                    false
-                }),
-        );
+        builder.provide(Foo::default.singleton().with_condition(
+            move |_, _| {
+                let mut provided = provided.lock().unwrap();
+                if *provided {
+                    return true;
+                }
+                *provided = true;
+                false
+            },
+        ));
 
         // Create first value
         let injector = builder.build();

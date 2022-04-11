@@ -257,6 +257,8 @@ mod builder;
 mod injector;
 mod iter;
 mod module;
+mod provider_registry;
+mod providers;
 mod requests;
 mod services;
 
@@ -265,10 +267,19 @@ pub use builder::*;
 pub use injector::*;
 pub use iter::*;
 pub use module::*;
+pub(crate) use provider_registry::*;
+pub use providers::*;
 pub use requests::*;
 pub use services::*;
 
 pub mod docs;
+
+#[doc(hidden)]
+pub mod private {
+    //! Private re-exports. Changes in this module are never considered breaking.
+
+    pub use downcast_rs;
+}
 
 #[cfg(test)]
 mod tests;

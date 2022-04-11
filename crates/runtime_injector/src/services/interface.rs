@@ -1,62 +1,24 @@
-use crate::{
-    DynSvc, InjectError, InjectResult, OwnedDynSvc, Service, ServiceInfo, Svc,
-};
+use crate::{Service, Svc};
 
-/// Indicates functionality that can be implemented.
-///
-/// For example, each [`Sized`] [`Service`] type is an interface that
-/// implements itself. This is done by requesting instances of itself from the
-/// injector. However, the injector cannot provide instances of dynamic types
-/// (`dyn Trait`) automatically because they are unsized. For this reason, any
-/// interfaces using traits must be declared explicitly before use. This trait
-/// should usually be implemented by the [`interface!`] macro in the same
-/// module the trait was declared in.
-///
-/// Since implementations of interfaces must be services, interfaces should be
-/// declared with a supertrait of [`Service`]. This will ensure that the
-/// implementors can be cast to [`dyn Any`](std::any::Any), and with the "arc"
-/// feature enabled, those implementors are also [`Send`] + [`Sync`].
-/// Additionally, trait interfaces must be convertible to trait objects so they
-/// can be used behind service pointers. You can read more about trait objects
-/// [here](https://doc.rust-lang.org/book/ch17-02-trait-objects.html).
-///
-/// See the documentation for the [`interface!`] macro for more information.
-pub trait Interface: Service {
-    /// Downcasts a dynamic service pointer into a service pointer of this
-    /// interface type.
-    fn downcast(service: DynSvc) -> InjectResult<Svc<Self>>;
-
-    /// Downcasts an owned dynamic service pointer into an owned service
-    /// pointer of this interface type.
-    fn downcast_owned(service: OwnedDynSvc) -> InjectResult<Box<Self>>;
-}
-
-impl<T: Service> Interface for T {
-    fn downcast(service: DynSvc) -> InjectResult<Svc<Self>> {
-        service
-            .downcast()
-            .map_err(|_| InjectError::InvalidProvider {
-                service_info: ServiceInfo::of::<Self>(),
-            })
-    }
-
-    fn downcast_owned(service: OwnedDynSvc) -> InjectResult<Box<Self>> {
-        service
-            .downcast()
-            .map_err(|_| InjectError::InvalidProvider {
-                service_info: ServiceInfo::of::<Self>(),
-            })
-    }
-}
+/// Implemented for trait objects.
+pub trait Interface: Service {}
 
 /// Marker trait that indicates that a type is an interface for another type.
 ///
-/// Each sized type is an interface for itself, and each `dyn Trait` is an
-/// interface for the types that it can resolve. This trait should usually be
-/// implemented by the [`interface!`] macro, and is strictly used to enforce
-/// stronger type checking when assigning implementations for interfaces.
-pub trait InterfaceFor<T: Service>: Interface {}
-impl<T: Service> InterfaceFor<T> for T {}
+/// Each `dyn Trait` is an interface for the types that it can resolve. This
+/// trait should usually be implemented by the [`interface!`] macro, and is
+/// primarily used to enforce stronger type checking when assigning
+/// implementations for interfaces.
+pub trait InterfaceFor<S>: Interface
+where
+    S: Service,
+{
+    #[doc(hidden)]
+    fn from_svc(service: Svc<S>) -> Svc<Self>;
+
+    #[doc(hidden)]
+    fn from_owned_svc(service: Box<S>) -> Box<Self>;
+}
 
 /// Marks a trait as being an interface for many other types. This means that
 /// a request for the given trait can resolve to any of the types indicated by
@@ -83,59 +45,46 @@ impl<T: Service> InterfaceFor<T> for T {}
 /// impl Foo for MockBar {}
 ///
 /// // Requests for `dyn Foo` can resolve to either `Bar` or, in a test run,
-/// // `MockBar`. Note that attributes are allowed on each of the listed types.
-/// interface! {
-///     dyn Foo = [
-///         Bar,
-///         #[cfg(test)]
-///         MockBar,
-///     ],
-/// };
+/// // `MockBar`.
+/// interface!(Foo);
 /// ```
 #[macro_export]
 macro_rules! interface {
-    {
-        $(
-            $interface:ty = [
-                $($(#[$($attr:meta),*])* $impl:ty),*
-                $(,)?
-            ]
-        ),*
-        $(,)?
-    } => {
-        $(
-            impl $crate::Interface for $interface {
-                #[allow(unused_assignments)]
-                fn downcast(mut service: $crate::DynSvc) -> $crate::InjectResult<$crate::Svc<Self>> {
-                    $(
-                        $(#[$($attr),*])*
-                        match service.downcast::<$impl>() {
-                            Ok(downcasted) => return Ok(downcasted as $crate::Svc<Self>),
-                            Err(input) => service = input,
-                        }
-                    )*
+    ($interface:tt) => {
+        impl $crate::Interface for dyn $interface {}
 
-                    Err($crate::InjectError::MissingProvider { service_info: $crate::ServiceInfo::of::<Self>() })
-                }
-
-                #[allow(unused_assignments)]
-                fn downcast_owned(mut service: $crate::OwnedDynSvc) -> $crate::InjectResult<::std::boxed::Box<Self>> {
-                    $(
-                        $(#[$($attr),*])*
-                        match service.downcast::<$impl>() {
-                            Ok(downcasted) => return Ok(downcasted as ::std::boxed::Box<Self>),
-                            Err(input) => service = input,
-                        }
-                    )*
-
-                    Err($crate::InjectError::MissingProvider { service_info: $crate::ServiceInfo::of::<Self>() })
-                }
+        impl<T: $interface> $crate::InterfaceFor<T> for dyn $interface {
+            fn from_svc(service: $crate::Svc<T>) -> $crate::Svc<Self> {
+                service
             }
 
-            $(
-                $(#[$($attr),*])*
-                impl $crate::InterfaceFor<$impl> for $interface {}
-            )*
-        )*
+            fn from_owned_svc(
+                service: ::std::boxed::Box<T>,
+            ) -> ::std::boxed::Box<Self> {
+                service
+            }
+        }
+
+        impl $crate::FromProvider for dyn $interface {
+            type Interface = Self;
+
+            fn should_provide(
+                _provider: &dyn $crate::Provider<Interface = Self::Interface>,
+            ) -> bool {
+                true
+            }
+
+            fn from_provided(
+                provided: Svc<Self::Interface>,
+            ) -> InjectResult<Svc<Self>> {
+                Ok(provided)
+            }
+
+            fn from_provided_owned(
+                provided: Box<Self::Interface>,
+            ) -> InjectResult<Box<Self>> {
+                Ok(provided)
+            }
+        }
     };
 }

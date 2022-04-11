@@ -1,9 +1,8 @@
 #![allow(clippy::blacklisted_name)]
-
 use crate::{
     constant, interface, InjectError, InjectResult, Injector, IntoSingleton,
     IntoTransient, RequestInfo, Service, ServiceInfo, Services, Svc,
-    TypedProvider,
+    WithInterface,
 };
 use std::sync::Mutex;
 
@@ -145,15 +144,7 @@ fn interfaces() {
         fn bar(&self) -> i32;
     }
 
-    interface!(
-        dyn Foo = [
-            Svc1,
-            #[cfg(test)]
-            Svc2,
-            #[cfg(not(test))]
-            Svc3,
-        ]
-    );
+    interface!(Foo);
 
     impl Foo for Svc1 {
         fn bar(&self) -> i32 {
@@ -216,7 +207,7 @@ fn multi_injection() {
     impl Foo for Svc2 {}
     impl Foo for Svc3 {}
 
-    interface!(dyn Foo = [Svc1, Svc2, Svc3]);
+    interface!(Foo);
 
     let mut builder = Injector::builder();
     builder.provide(Svc1::default.transient().with_interface::<dyn Foo>());
@@ -226,7 +217,7 @@ fn multi_injection() {
     assert_eq!(1, foos.len());
 
     let foos: Vec<Svc<dyn Foo>> =
-        foos.get_all().collect::<InjectResult<_>>().unwrap();
+        foos.iter().collect::<InjectResult<_>>().unwrap();
     assert_eq!(1, foos.len());
 }
 

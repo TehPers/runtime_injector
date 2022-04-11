@@ -1,4 +1,4 @@
-use crate::{Provider, ProviderMap, RequestParameter};
+use crate::{InterfaceRegistryBuilder, Provider, RequestParameter};
 use std::collections::HashMap;
 
 /// A collection of providers that can be added all at once to an
@@ -10,22 +10,22 @@ use std::collections::HashMap;
 /// [`define_module!`].
 #[derive(Default)]
 pub struct Module {
-    pub(crate) providers: ProviderMap,
+    pub(crate) registry_builder: InterfaceRegistryBuilder,
     pub(crate) parameters: HashMap<String, Box<dyn RequestParameter>>,
 }
 
 impl Module {
-    /// Assigns the provider for a service type. Multiple providers can be
-    /// registered for a service.
+    /// Inserts a provider for a service type and interface. Multiple providers
+    /// can be registered for a service at once.
     #[allow(clippy::missing_panics_doc)]
-    pub fn provide<P: Provider>(&mut self, provider: P) {
+    pub fn provide<P>(&mut self, provider: P)
+    where
+        P: Provider,
+    {
         // Should never panic
-        self.providers
-            .entry(provider.result())
-            .or_insert_with(|| Some(Vec::new()))
-            .as_mut()
-            .unwrap()
-            .push(Box::new(provider));
+        self.registry_builder
+            .ensure_providers_mut()
+            .add_provider_for(provider.result(), Box::new(provider));
     }
 
     /// Sets the of a value request parameter for requests made by the injector

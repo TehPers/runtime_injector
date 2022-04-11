@@ -37,6 +37,7 @@ where
     R: Service,
     F: Service + ServiceFactory<D, Result = R>,
 {
+    type Interface = dyn Service;
     type Result = R;
 
     fn provide_typed(

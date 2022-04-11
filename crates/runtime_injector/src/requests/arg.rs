@@ -26,14 +26,14 @@ use std::{
 /// assert_eq!(12, *foo.0);
 /// ```
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug, Hash)]
-pub struct Arg<T: Service + AsAny + Clone>(T);
+pub struct Arg<T: Service + Clone>(T);
 
-impl<T: Service + AsAny + Clone> Arg<T> {
+impl<T: Service + Clone> Arg<T> {
     pub(crate) fn param_name(target: ServiceInfo) -> String {
         format!(
             "runtime_injector::Arg[target={:?},type={:?}]",
-            target.id(),
-            ServiceInfo::of::<T>().id()
+            target.name(),
+            ServiceInfo::of::<T>().name()
         )
     }
 
@@ -43,7 +43,7 @@ impl<T: Service + AsAny + Clone> Arg<T> {
     }
 }
 
-impl<T: Service + AsAny + Clone> Deref for Arg<T> {
+impl<T: Service + Clone> Deref for Arg<T> {
     type Target = T;
 
     fn deref(&self) -> &Self::Target {
@@ -51,20 +51,20 @@ impl<T: Service + AsAny + Clone> Deref for Arg<T> {
     }
 }
 
-impl<T: Service + AsAny + Clone> DerefMut for Arg<T> {
+impl<T: Service + Clone> DerefMut for Arg<T> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.0
     }
 }
 
-impl<T: Display + Service + AsAny + Clone> Display for Arg<T> {
+impl<T: Display + Service + Clone> Display for Arg<T> {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", self.0)
     }
 }
 
 /// Allows custom pre-defined values to be passed as arguments to services.
-impl<T: Service + AsAny + Clone> Request for Arg<T> {
+impl<T: Service + Clone> Request for Arg<T> {
     fn request(_injector: &Injector, info: &RequestInfo) -> InjectResult<Self> {
         let parent_request = info.service_path().last().ok_or_else(|| {
             InjectError::ActivationFailed {

@@ -39,6 +39,7 @@ where
     R: Service,
     F: Service + ServiceFactory<D, Result = R>,
 {
+    type Interface = dyn Service;
     type Result = R;
 
     fn provide_typed(
@@ -111,8 +112,8 @@ where
 
 #[cfg(test)]
 mod tests {
-    use std::sync::Mutex;
     use super::*;
+    use std::sync::Mutex;
 
     #[derive(PartialEq, Eq, Debug)]
     struct Foo(i32);

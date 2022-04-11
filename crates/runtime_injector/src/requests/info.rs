@@ -5,7 +5,7 @@ use std::{
 };
 
 /// Information about an active request.
-#[derive(Clone)]
+#[derive(Clone, Default)]
 pub struct RequestInfo {
     service_path: Vec<ServiceInfo>,
     parameters: HashMap<String, Box<dyn RequestParameter>>,
@@ -115,12 +115,6 @@ impl RequestInfo {
         key: &str,
     ) -> Option<&mut dyn RequestParameter> {
         self.parameters.get_mut(key).map(AsMut::as_mut)
-    }
-}
-
-impl Default for RequestInfo {
-    fn default() -> Self {
-        RequestInfo::new()
     }
 }
 
