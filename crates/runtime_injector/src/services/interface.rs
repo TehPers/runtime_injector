@@ -20,21 +20,23 @@ where
     fn from_owned_svc(service: Box<S>) -> Box<Self>;
 }
 
-/// Marks a trait as being an interface for many other types. This means that
-/// a request for the given trait can resolve to any of the types indicated by
-/// this macro invocation.
+/// Marks a trait as being an interface. This means that a request for the
+/// given trait can resolve to services of any of the types that implement it.
+/// Those services must be registered to this interface when building the
+/// [`Injector`](crate::Injector).
 ///
-/// With the "arc" feature enabled, the trait must be a subtrait of [`Send`]
-/// and [`Sync`]. This is necessary to allow the service pointers to be
-/// downcasted. If the "rc" feature is enabled, this is not required.
-/// Additionally, instances of the trait must have a `'static` lifetime. This
-/// can be done easily by making your interface a subtrait of [`Service`].
+/// The interface trait must be a subtrait of [`Service`]. This means that
+/// implementors must have a static lifetime. If the "arc" feature is enabled,
+/// they must also be [`Send`] + [`Sync`].
 ///
 /// ## Example
 ///
 /// ```
-/// use runtime_injector::{interface, Service};
+/// use runtime_injector::{
+///     interface, Injector, IntoSingleton, Service, Svc, WithInterface,
+/// };
 ///
+/// #[derive(Default)]
 /// struct Bar;
 /// #[cfg(test)]
 /// struct MockBar;
@@ -47,6 +49,12 @@ where
 /// // Requests for `dyn Foo` can resolve to either `Bar` or, in a test run,
 /// // `MockBar`.
 /// interface!(Foo);
+///
+/// let mut builder = Injector::builder();
+/// builder.provide(Bar::default.singleton().with_interface::<dyn Foo>());
+///
+/// let injector = builder.build();
+/// let _bar: Svc<dyn Foo> = injector.get().unwrap();
 /// ```
 #[macro_export]
 macro_rules! interface {
@@ -68,6 +76,9 @@ macro_rules! interface {
         impl $crate::FromProvider for dyn $interface {
             type Interface = Self;
 
+            const SERVICE_TYPE: $crate::ServiceType =
+                $crate::ServiceType::Interface;
+
             fn should_provide(
                 _provider: &dyn $crate::Provider<Interface = Self::Interface>,
             ) -> bool {
@@ -75,15 +86,15 @@ macro_rules! interface {
             }
 
             fn from_provided(
-                provided: Svc<Self::Interface>,
-            ) -> InjectResult<Svc<Self>> {
-                Ok(provided)
+                provided: $crate::Svc<Self::Interface>,
+            ) -> $crate::InjectResult<$crate::Svc<Self>> {
+                ::std::result::Result::Ok(provided)
             }
 
             fn from_provided_owned(
-                provided: Box<Self::Interface>,
-            ) -> InjectResult<Box<Self>> {
-                Ok(provided)
+                provided: ::std::boxed::Box<Self::Interface>,
+            ) -> $crate::InjectResult<::std::boxed::Box<Self>> {
+                ::std::result::Result::Ok(provided)
             }
         }
     };

@@ -162,8 +162,6 @@ pub enum InjectError {
     MultipleProviders {
         /// The service that was requested.
         service_info: ServiceInfo,
-        /// The number of providers registered for that service.
-        providers: usize,
     },
 
     /// The registered provider can't provide an owned variant of the requested
@@ -241,12 +239,10 @@ impl Display for InjectError {
             }
             InjectError::MultipleProviders {
                 service_info,
-                providers,
             } => write!(
                 f,
-                "the requested service {} has {} providers registered (did you mean to request a Services<T> instead?)",
+                "the requested service {} has multiple providers registered (did you mean to request a Services<T> instead?)",
                 service_info.name(),
-                providers
             ),
             InjectError::OwnedNotSupported {
                 service_info

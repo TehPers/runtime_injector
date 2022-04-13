@@ -1,9 +1,7 @@
 use crate::{
-    FromProvider, InjectError, InjectResult, InjectorBuilder, Interface,
-    InterfaceRegistry, Provider, Request, RequestInfo, ServiceInfo, Services,
-    Svc,
+    FromProvider, InjectResult, InjectorBuilder, InterfaceRegistry, Providers,
+    Request, RequestInfo, ServiceInfo, ServiceType, Services, Svc,
 };
-use std::ops::{Deref, DerefMut};
 
 pub(crate) trait MapContainerEx<T> {
     fn new(value: T) -> Self;
@@ -112,7 +110,7 @@ pub(crate) use types::*;
 /// assert_eq!(1.0, value1);
 /// assert_eq!(2.0, value2);
 /// ```
-#[derive(Clone, Default)]
+#[derive(Clone, Debug, Default)]
 pub struct Injector {
     interface_registry: MapContainer<InterfaceRegistry>,
     root_request_info: Svc<RequestInfo>,
@@ -203,11 +201,12 @@ impl Injector {
     ///
     /// ```
     /// use runtime_injector::{
-    ///     interface, Injector, IntoSingleton, Svc, TypedProvider, Service
+    ///     interface, Injector, IntoSingleton, Service, Svc, TypedProvider,
+    ///     WithInterface,
     /// };
     ///
     /// trait Foo: Service {}
-    /// interface!(dyn Foo = [Bar]);
+    /// interface!(Foo);
     ///
     /// #[derive(Default)]
     /// struct Bar;
@@ -225,11 +224,12 @@ impl Injector {
     ///
     /// ```
     /// use runtime_injector::{
-    ///     interface, Injector, IntoSingleton, Svc, TypedProvider, Service
+    ///     interface, Injector, IntoSingleton, Service, Svc, TypedProvider,
+    ///     WithInterface,
     /// };
     ///
     /// trait Foo: Service {}
-    /// interface!(dyn Foo = [Bar, Baz]);
+    /// interface!(Foo);
     ///
     /// #[derive(Default)]
     /// struct Bar;
@@ -296,72 +296,31 @@ impl Injector {
         &self,
         request_info: &RequestInfo,
     ) -> InjectResult<Services<S>> {
-        let service_info = ServiceInfo::of::<S>();
-        let providers = self.interface_registry.with_inner_mut(|registry| {
-            Ok(ProvidersLease {
-                parent_registry: self.interface_registry.clone(),
-                providers: registry.take_providers_for(service_info)?,
-            })
-        })?;
+        let providers = match S::SERVICE_TYPE {
+            ServiceType::Service => {
+                let service_info = ServiceInfo::of::<S>();
+                let providers =
+                    self.interface_registry.with_inner_mut(|registry| {
+                        registry.take_providers_for(service_info)
+                    })?;
+                Providers::services(
+                    self.interface_registry.clone(),
+                    providers,
+                    service_info,
+                )
+            }
+            ServiceType::Interface => self
+                .interface_registry
+                .with_inner_mut(|registry| registry.take())
+                .map(|provider_registry| {
+                    Providers::interface(
+                        self.interface_registry.clone(),
+                        provider_registry,
+                    )
+                })?,
+        };
 
         Ok(Services::new(self.clone(), request_info.clone(), providers))
-    }
-}
-
-pub(crate) struct ProvidersLease<I>
-where
-    I: ?Sized + Interface,
-{
-    parent_registry: MapContainer<InterfaceRegistry>,
-    providers: Vec<Box<dyn Provider<Interface = I>>>,
-}
-
-impl<I> Deref for ProvidersLease<I>
-where
-    I: ?Sized + Interface,
-{
-    type Target = [Box<dyn Provider<Interface = I>>];
-
-    fn deref(&self) -> &Self::Target {
-        self.providers.as_slice()
-    }
-}
-
-impl<I> DerefMut for ProvidersLease<I>
-where
-    I: ?Sized + Interface,
-{
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        self.providers.as_mut_slice()
-    }
-}
-
-impl<I> Drop for ProvidersLease<I>
-where
-    I: ?Sized + Interface,
-{
-    fn drop(&mut self) {
-        let providers = std::mem::take(&mut self.providers);
-        let result = self
-            .parent_registry
-            .lock()
-            .map_err(|_| {
-                InjectError::InternalError(
-                    "failed to acquire lock for interface registry".into(),
-                )
-            })
-            .and_then(|mut registry| {
-                registry
-                    .reclaim_providers_for(ServiceInfo::of::<I>(), providers)
-            });
-
-        if let Err(error) = result {
-            eprintln!(
-                "An error occurred while releasing providiers for {}: {}",
-                ServiceInfo::of::<I>().name(),
-                error
-            );
-        }
     }
 }
 

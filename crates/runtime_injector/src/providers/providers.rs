@@ -35,55 +35,29 @@ pub trait Provider: Service {
     }
 }
 
-impl<T> Provider for T
-where
-    T: TypedProvider,
-{
-    type Interface = <T as TypedProvider>::Interface;
-
-    fn result(&self) -> ServiceInfo {
-        ServiceInfo::of::<T::Result>()
-    }
-
-    fn provide(
-        &mut self,
-        injector: &Injector,
-        request_info: &RequestInfo,
-    ) -> InjectResult<Svc<Self::Interface>> {
-        let service = self.provide_typed(injector, request_info)?;
-        Ok(Self::Interface::from_svc(service))
-    }
-
-    fn provide_owned(
-        &mut self,
-        injector: &Injector,
-        request_info: &RequestInfo,
-    ) -> InjectResult<Box<Self::Interface>> {
-        let service = self.provide_owned_typed(injector, request_info)?;
-        Ok(Self::Interface::from_owned_svc(service))
-    }
-}
-
 /// A strongly-typed service provider.
 ///
-/// Types which implement this trait can provide strongly-typed instances of a
-/// particular service type. Examples of typed providers include providers
-/// created from service factories or constant providers. This should be
-/// preferred over [`Provider`] for custom service providers if possible due to
-/// the strong type guarantees this provides. [`Provider`] is automatically
+/// Types which implement this trait can provide instances of a particular
+/// service type. Examples of typed providers include providers created from
+/// service factories or constant providers. This should be preferred over
+/// [`Provider`] for custom service providers if possible due to the strong
+/// type guarantees this trait provides. [`Provider`] is automatically
 /// implemented for all types which implement [`TypedProvider`].
 ///
 /// ## Example
 ///
 /// ```
 /// use runtime_injector::{
-///     InjectResult, Injector, RequestInfo, Svc, TypedProvider,
+///     InjectResult, Injector, RequestInfo, Service, Svc, TypedProvider,
 /// };
 ///
 /// struct Foo;
 ///
 /// struct FooProvider;
 /// impl TypedProvider for FooProvider {
+///     // The interface must be `dyn Service` for the service to be requested
+///     // directly by its concrete type.
+///     type Interface = dyn Service;
 ///     type Result = Foo;
 ///
 ///     fn provide_typed(
@@ -128,5 +102,34 @@ pub trait TypedProvider:
         Err(InjectError::OwnedNotSupported {
             service_info: ServiceInfo::of::<Self::Result>(),
         })
+    }
+}
+
+impl<T> Provider for T
+where
+    T: TypedProvider,
+{
+    type Interface = <T as TypedProvider>::Interface;
+
+    fn result(&self) -> ServiceInfo {
+        ServiceInfo::of::<T::Result>()
+    }
+
+    fn provide(
+        &mut self,
+        injector: &Injector,
+        request_info: &RequestInfo,
+    ) -> InjectResult<Svc<Self::Interface>> {
+        let service = self.provide_typed(injector, request_info)?;
+        Ok(Self::Interface::from_svc(service))
+    }
+
+    fn provide_owned(
+        &mut self,
+        injector: &Injector,
+        request_info: &RequestInfo,
+    ) -> InjectResult<Box<Self::Interface>> {
+        let service = self.provide_owned_typed(injector, request_info)?;
+        Ok(Self::Interface::from_owned_svc(service))
     }
 }

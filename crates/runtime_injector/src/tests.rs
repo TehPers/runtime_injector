@@ -202,10 +202,7 @@ fn interfaces() {
 #[test]
 fn multi_injection() {
     trait Foo: Service {}
-
     impl Foo for Svc1 {}
-    impl Foo for Svc2 {}
-    impl Foo for Svc3 {}
 
     interface!(Foo);
 
@@ -213,8 +210,9 @@ fn multi_injection() {
     builder.provide(Svc1::default.transient().with_interface::<dyn Foo>());
 
     let injector = builder.build();
+    dbg!(&injector);
     let mut foos: Services<dyn Foo> = injector.get().unwrap();
-    assert_eq!(1, foos.len());
+    assert_eq!(1, foos.iter().count());
 
     let foos: Vec<Svc<dyn Foo>> =
         foos.iter().collect::<InjectResult<_>>().unwrap();

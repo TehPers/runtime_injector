@@ -32,8 +32,8 @@ impl<T: Service + Clone> Arg<T> {
     pub(crate) fn param_name(target: ServiceInfo) -> String {
         format!(
             "runtime_injector::Arg[target={:?},type={:?}]",
-            target.name(),
-            ServiceInfo::of::<T>().name()
+            target.id(),
+            ServiceInfo::of::<T>().id()
         )
     }
 
@@ -194,11 +194,8 @@ mod tests {
                 inner,
             } => {
                 // Check that the service info is correct.
-                assert_eq!(
-                    ServiceInfo::of::<Arg<i32>>(),
-                    service_info,
-                );
-                
+                assert_eq!(ServiceInfo::of::<Arg<i32>>(), service_info,);
+
                 // Check that the inner error is correct.
                 match inner.downcast_ref::<ArgRequestError>() {
                     Some(ArgRequestError::MissingParameter) => (),
@@ -280,6 +277,6 @@ mod tests {
 
         let injector = builder.build();
         let foo = injector.get::<Svc<Foo>>().unwrap();
-        assert_eq!(42, foo.0.0);
+        assert_eq!(42, foo.0 .0);
     }
 }

@@ -67,14 +67,7 @@ impl Module {
 /// trait Fooable: Service {}
 /// impl Fooable for Foo {}
 /// impl Fooable for Bar {}
-/// interface! {
-///     dyn Fooable = [
-///         Foo,
-///         Bar,
-///         #[cfg(test)]
-///         Quux,
-///     ]
-/// };
+/// interface!(Fooable);
 ///
 /// let module = define_module! {
 ///     services = [
@@ -151,7 +144,7 @@ macro_rules! define_module {
         }
     ) => {
         $(
-            $($module.provide($crate::TypedProvider::with_interface::<$interface>($implementation));)*
+            $($module.provide($crate::WithInterface::with_interface::<$interface>($implementation));)*
         )*
     };
     (

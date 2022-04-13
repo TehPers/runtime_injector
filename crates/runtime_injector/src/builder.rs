@@ -1,13 +1,18 @@
 use crate::{
-    provider_registry::{ProviderRegistry, ProviderRegistryType},
+    provider_registry::{
+        ProviderRegistry, ProviderRegistryType, ProviderSlot, Slot,
+    },
     Injector, Interface, InterfaceRegistry, Module, Provider, RequestInfo,
     Service, ServiceInfo,
 };
 use downcast_rs::impl_downcast;
-use std::collections::{hash_map::Entry, HashMap};
+use std::{
+    collections::{hash_map::Entry, HashMap},
+    fmt::{Debug, Formatter},
+};
 
 /// A builder for an [`Injector`].
-#[derive(Default)]
+#[derive(Debug, Default)]
 pub struct InjectorBuilder {
     registry_builder: InterfaceRegistryBuilder,
     root_info: RequestInfo,
@@ -54,7 +59,12 @@ impl InjectorBuilder {
     {
         self.registry_builder
             .providers_mut::<I>()
-            .map(|providers| providers.remove_providers_for(service_info))
+            .map(|providers| {
+                providers
+                    .remove_providers_for(service_info)
+                    .into_inner()
+                    .unwrap()
+            })
             .unwrap_or_default()
     }
 
@@ -114,8 +124,7 @@ pub(crate) struct ProviderRegistryBuilder<I>
 where
     I: ?Sized + Interface,
 {
-    providers:
-        HashMap<ServiceInfo, Option<Vec<Box<dyn Provider<Interface = I>>>>>,
+    providers: HashMap<ServiceInfo, ProviderSlot<I>>,
 }
 
 impl<I> ProviderRegistryBuilder<I>
@@ -130,21 +139,17 @@ where
         #[allow(clippy::missing_panics_doc)]
         self.providers
             .entry(service_info)
-            .or_insert_with(|| Some(Vec::new()))
-            .as_mut()
-            .unwrap()
-            .push(provider);
+            .or_default()
+            .with_inner_mut(|providers| providers.push(provider))
+            .unwrap();
     }
 
     pub fn remove_providers_for(
         &mut self,
         service_info: ServiceInfo,
-    ) -> Vec<Box<dyn Provider<Interface = I>>> {
+    ) -> ProviderSlot<I> {
         #[allow(clippy::missing_panics_doc)]
-        self.providers
-            .remove(&service_info)
-            .map(Option::unwrap)
-            .unwrap_or_default()
+        self.providers.remove(&service_info).unwrap_or_default()
     }
 }
 
@@ -159,7 +164,18 @@ where
     }
 }
 
-pub(crate) trait ProviderRegistryBuilderType: Service {
+impl<I> Debug for ProviderRegistryBuilder<I>
+where
+    I: ?Sized + Interface,
+{
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("ProviderRegistryBuilder")
+            .field("providers", &self.providers)
+            .finish()
+    }
+}
+
+pub(crate) trait ProviderRegistryBuilderType: Service + Debug {
     fn merge(
         &mut self,
         other: Box<dyn ProviderRegistryBuilderType>,
@@ -179,13 +195,14 @@ where
         let other: Box<Self> = other.downcast()?;
         for (service_info, other_providers) in other.providers {
             #[allow(clippy::missing_panics_doc)]
-            let mut other_providers = other_providers.unwrap();
+            let mut other_providers = other_providers.into_inner().unwrap();
             self.providers
                 .entry(service_info)
-                .or_insert_with(|| Some(Vec::new()))
-                .as_mut()
-                .unwrap()
-                .append(&mut other_providers);
+                .or_default()
+                .with_inner_mut(|providers| {
+                    providers.append(&mut other_providers)
+                })
+                .unwrap();
         }
 
         Ok(())
@@ -202,9 +219,15 @@ impl_downcast!(sync ProviderRegistryBuilderType);
 #[cfg(feature = "rc")]
 impl_downcast!(ProviderRegistryBuilderType);
 
-#[derive(Default)]
+impl Debug for Slot<Box<dyn ProviderRegistryBuilderType>> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        f.debug_tuple("Slot").field(&self.inner()).finish()
+    }
+}
+
+#[derive(Debug, Default)]
 pub(crate) struct InterfaceRegistryBuilder {
-    providers: HashMap<ServiceInfo, Box<dyn ProviderRegistryBuilderType>>,
+    providers: HashMap<ServiceInfo, Slot<Box<dyn ProviderRegistryBuilderType>>>,
 }
 
 impl InterfaceRegistryBuilder {
@@ -217,6 +240,8 @@ impl InterfaceRegistryBuilder {
         #[allow(clippy::missing_panics_doc)]
         self.providers
             .get_mut(&ServiceInfo::of::<I>())
+            .map(Slot::inner_mut)
+            .map(Option::unwrap)
             .map(|providers| {
                 providers
                     .downcast_mut::<ProviderRegistryBuilder<I>>()
@@ -231,9 +256,13 @@ impl InterfaceRegistryBuilder {
         #[allow(clippy::missing_panics_doc)]
         self.providers
             .entry(ServiceInfo::of::<I>())
-            .or_insert_with(
-                || Box::new(ProviderRegistryBuilder::<I>::default()),
-            )
+            .or_insert_with(|| {
+                (Box::new(ProviderRegistryBuilder::<I>::default())
+                    as Box<dyn ProviderRegistryBuilderType>)
+                    .into()
+            })
+            .inner_mut()
+            .unwrap()
             .downcast_mut()
             .unwrap()
     }
@@ -244,17 +273,21 @@ impl InterfaceRegistryBuilder {
 
     pub fn merge(&mut self, other: InterfaceRegistryBuilder) {
         for (service_info, other_providers) in other.providers {
+            #[allow(clippy::missing_panics_doc)]
+            let other_providers = other_providers.into_inner().unwrap();
             match self.providers.entry(service_info) {
                 Entry::Occupied(entry) => {
                     #[allow(clippy::missing_panics_doc)]
                     entry
                         .into_mut()
+                        .inner_mut()
+                        .unwrap()
                         .merge(other_providers)
                         .map_err(|_| "error merging provider builders")
                         .unwrap();
                 }
                 Entry::Vacant(entry) => {
-                    entry.insert(other_providers);
+                    entry.insert(other_providers.into());
                 }
             }
         }
@@ -265,7 +298,12 @@ impl InterfaceRegistryBuilder {
             .providers
             .into_iter()
             .map(|(service_info, mut providers)| {
-                (service_info, providers.build())
+                (
+                    service_info,
+                    providers
+                        .with_inner_mut(|providers| providers.build())
+                        .into(),
+                )
             })
             .collect();
         InterfaceRegistry::new(providers)

@@ -43,18 +43,21 @@ where
 /// automatically implemented for all types that implement [`TypedProvider<I>`].
 pub trait WithInterface: TypedProvider {
     /// Provides this service as an implementation of a particular interface.
-    /// Rather than requesting this service with its concrete type, it can
-    /// instead be requested by its interface type.
+    /// Rather than requesting this service with its concrete type, it is
+    /// instead requested by its interface type. By default, all services are
+    /// assigned to the [`dyn Service`] interface. Any services assigned to the
+    /// [`dyn Service`] interface can be requested directly by their concrete
+    /// type. Other services cannot be requested by their concrete types once
+    /// they has been assigned another interface.
     ///
-    /// *Note: it cannot be requested with its concrete type once it has been
-    /// assigned an interface.*
+    /// [`dyn Service`]: crate::Service
     ///
     /// ## Example
     ///
     /// ```
     /// use runtime_injector::{
     ///     interface, InjectResult, Injector, IntoSingleton, Service, Svc,
-    ///     TypedProvider,
+    ///     TypedProvider, WithInterface,
     /// };
     ///
     /// trait Fooable: Service {

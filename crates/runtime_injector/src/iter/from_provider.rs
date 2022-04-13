@@ -2,8 +2,16 @@ use crate::{
     InjectError, InjectResult, Interface, Provider, Service, ServiceInfo, Svc,
 };
 
+#[derive(Clone, Copy, PartialEq, Eq, Debug, Hash)]
+pub enum ServiceType {
+    Service,
+    Interface,
+}
+
 pub trait FromProvider: Service {
     type Interface: ?Sized + Interface;
+
+    const SERVICE_TYPE: ServiceType;
 
     fn should_provide(
         provider: &dyn Provider<Interface = Self::Interface>,
@@ -19,6 +27,8 @@ pub trait FromProvider: Service {
 
 impl<S: Service> FromProvider for S {
     type Interface = dyn Service;
+
+    const SERVICE_TYPE: ServiceType = ServiceType::Service;
 
     #[inline]
     fn should_provide(

@@ -1,7 +1,7 @@
 mod from_provider;
 mod services;
-// mod services_of;
+mod providers;
 
 pub use from_provider::*;
+pub use providers::*;
 pub use services::*;
-// pub use services_of::*;

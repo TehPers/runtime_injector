@@ -1,7 +1,7 @@
 //! # Getting started
 //!
-//! Let's start with a simple application. Let's write an application for
-//! greeting our users with a nice message.
+//! Let's start with a simple application where we greet our users with a nice
+//! message:
 //!
 //! ```
 //! use std::io::stdin;
@@ -243,33 +243,14 @@
 //!
 //! // Since we'll be relying on dependency injection, we need to provide our
 //! // container a little more information by declaring our interfaces. First,
-//! // we have three implementations of `OutputWriter`
-//! interface! {
-//!     dyn OutputWriter = [
-//!         ConsoleWriter,
-//!         HttpsWriter,
-//!         TcpWriter,
-//!         #[cfg(test)]
-//!         MockWriter
-//!     ]
-//! }
+//! // we will declare `OutputWriter` to be an interface:
+//! interface!(OutputWriter);
 //!
-//! // We also have two implementations of `OutputFormatter`
-//! interface! {
-//!     dyn OutputFormatter = [
-//!         UserFormatter,
-//!         DefaultFormatter
-//!     ]
-//! }
+//! // We also have the `OutputFormatter` interface:
+//! interface!(OutputFormatter);
 //!
-//! // Finally, we have two implementations of `InputReader` as well
-//! interface! {
-//!     dyn InputReader = [
-//!         ConsoleReader,
-//!         #[cfg(test)]
-//!         MockReader
-//!     ]
-//! }
+//! // Finally, we have the `InputReader` interface:
+//! interface!(InputReader);
 //!
 //! // We'll make a function to help us configure everything based on the
 //! // configuration settings our user gave us

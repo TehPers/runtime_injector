@@ -83,20 +83,24 @@ impl<S: ?Sized + FromProvider> Request for Svc<S> {
     #[inline]
     fn request(injector: &Injector, info: &RequestInfo) -> InjectResult<Self> {
         let mut services: Services<S> = injector.get_with(info)?;
-        if services.len() > 1 {
-            Err(InjectError::MultipleProviders {
-                service_info: ServiceInfo::of::<S>(),
-                providers: services.len(),
-            })
-        } else {
-            let service = services.iter().next().transpose()?.ok_or(
-                InjectError::MissingProvider {
-                    service_info: ServiceInfo::of::<S>(),
-                },
-            )?;
+        let mut services = services.iter();
 
-            Ok(service)
+        // Try to get first provided service
+        let first =
+            services
+                .next()
+                .ok_or_else(|| InjectError::MissingProvider {
+                    service_info: ServiceInfo::of::<S>(),
+                })?;
+
+        // Check if another service is provided
+        if services.next().is_some() {
+            return Err(InjectError::MultipleProviders {
+                service_info: ServiceInfo::of::<S>(),
+            });
         }
+
+        first
     }
 }
 
@@ -105,21 +109,26 @@ impl<S: ?Sized + FromProvider> Request for Svc<S> {
 /// otherwise succeed.
 impl<S: ?Sized + FromProvider> Request for Box<S> {
     fn request(injector: &Injector, info: &RequestInfo) -> InjectResult<Self> {
+        // Get service iterator
         let mut services: Services<S> = injector.get_with(info)?;
-        if services.len() > 1 {
-            Err(InjectError::MultipleProviders {
-                service_info: ServiceInfo::of::<S>(),
-                providers: services.len(),
-            })
-        } else {
-            let service = services.iter_owned().next().transpose()?.ok_or(
-                InjectError::MissingProvider {
-                    service_info: ServiceInfo::of::<S>(),
-                },
-            )?;
+        let mut services = services.iter_owned();
 
-            Ok(service)
+        // Try to get first provided service
+        let first =
+            services
+                .next()
+                .ok_or_else(|| InjectError::MissingProvider {
+                    service_info: ServiceInfo::of::<S>(),
+                })?;
+
+        // Check if another service is provided
+        if services.next().is_some() {
+            return Err(InjectError::MultipleProviders {
+                service_info: ServiceInfo::of::<S>(),
+            });
         }
+
+        first
     }
 }
 

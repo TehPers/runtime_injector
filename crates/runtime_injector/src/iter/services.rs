@@ -1,16 +1,59 @@
 use crate::{
-    FromProvider, InjectError, InjectResult, Injector, Provider,
-    ProvidersLease, RequestInfo, ServiceInfo, Svc,
+    FromProvider, InjectError, InjectResult, Injector, ProviderIter, Providers,
+    RequestInfo, ServiceInfo, Svc,
 };
-use std::{marker::PhantomData, slice::IterMut};
+use std::marker::PhantomData;
 
+/// A collection of all the providers for a particular service or interface.
+/// Each service is activated only during iteration of this collection.
+///
+/// If a type only has one implementation registered for it, then it may be
+/// easier to request [`Svc<I>`] from the container instead. However, if
+/// multiple implementations are registered (or no implementations are
+/// registered), then this will allow all of those implementations to be
+/// iterated over.
+///
+/// ```
+/// use runtime_injector::{
+///     interface, Injector, IntoTransient, Service, Services, Svc,
+///     TypedProvider, WithInterface,
+/// };
+///
+/// trait Fooable: Service {
+///     fn baz(&self) {}
+/// }
+///
+/// interface!(Fooable);
+///
+/// #[derive(Default)]
+/// struct Foo;
+/// impl Fooable for Foo {}
+///
+/// #[derive(Default)]
+/// struct Bar;
+/// impl Fooable for Bar {}
+///
+/// let mut builder = Injector::builder();
+/// builder.provide(Foo::default.transient().with_interface::<dyn Fooable>());
+/// builder.provide(Bar::default.transient().with_interface::<dyn Fooable>());
+///
+/// let injector = builder.build();
+/// let mut counter = 0;
+/// let mut fooables: Services<dyn Fooable> = injector.get().unwrap();
+/// for foo in fooables.iter() {
+///     counter += 1;
+///     foo.unwrap().baz();
+/// }
+///
+/// assert_eq!(2, counter);
+/// ```
 pub struct Services<S>
 where
     S: ?Sized + FromProvider,
 {
     injector: Injector,
     request_info: RequestInfo,
-    providers: ProvidersLease<S::Interface>,
+    providers: Providers<S::Interface>,
     _marker: PhantomData<fn() -> S>,
 }
 
@@ -22,7 +65,7 @@ where
     pub(crate) fn new(
         injector: Injector,
         request_info: RequestInfo,
-        providers: ProvidersLease<S::Interface>,
+        providers: Providers<S::Interface>,
     ) -> Self {
         Services {
             injector,
@@ -39,7 +82,7 @@ where
         ServicesIter {
             injector: &self.injector,
             request_info: &self.request_info,
-            provider_iter: self.providers.iter_mut(),
+            provider_iter: self.providers.iter(),
             _marker: PhantomData,
         }
     }
@@ -51,35 +94,49 @@ where
         OwnedServicesIter {
             injector: &self.injector,
             request_info: &self.request_info,
-            provider_iter: self.providers.iter_mut(),
+            provider_iter: self.providers.iter(),
             _marker: PhantomData,
         }
     }
-
-    /// Gets the number of provided services of the given type registered to
-    /// this interface. This does not take into account conditional providers
-    /// which may not return an implementation of the service.
-    #[inline]
-    pub fn len(&self) -> usize {
-        self.providers.len()
-    }
-
-    /// Returns whether there are no providers for the given service and
-    /// interface. Conditional providers still may not return an implementation
-    /// of the service even if this returns `true`.
-    #[inline]
-    pub fn is_empty(&self) -> bool {
-        self.providers.is_empty()
-    }
 }
 
+/// An iterator over the provided services of the given type. Each service is
+/// activated on demand.
+///
+/// ```
+/// use runtime_injector::{constant, Injector, IntoTransient, Services, Svc};
+/// use std::sync::Mutex;
+///
+/// struct Foo;
+///
+/// fn make_foo(counter: Svc<Mutex<usize>>) -> Foo {
+///     // Increment the counter to track how many Foos have been created
+///     let mut counter = counter.lock().unwrap();
+///     *counter += 1;
+///     Foo
+/// }
+///
+/// let mut builder = Injector::builder();
+/// builder.provide(constant(Mutex::new(0usize)));
+/// builder.provide(make_foo.transient());
+///
+/// let injector = builder.build();
+/// let counter: Svc<Mutex<usize>> = injector.get().unwrap();
+/// let mut foos: Services<Foo> = injector.get().unwrap();
+///
+/// let mut iter = foos.iter();
+/// assert_eq!(0, *counter.lock().unwrap());
+/// assert!(iter.next().is_some());
+/// assert_eq!(1, *counter.lock().unwrap());
+/// assert!(iter.next().is_none());
+/// ```
 pub struct ServicesIter<'a, S>
 where
     S: ?Sized + FromProvider,
 {
     injector: &'a Injector,
     request_info: &'a RequestInfo,
-    provider_iter: IterMut<'a, Box<dyn Provider<Interface = S::Interface>>>,
+    provider_iter: ProviderIter<'a, S::Interface>,
     _marker: PhantomData<fn() -> S>,
 }
 
@@ -91,8 +148,13 @@ where
 
     fn next(&mut self) -> Option<Self::Item> {
         self.provider_iter.find_map(|provider| {
+            let provider = match provider {
+                Ok(provider) => provider,
+                Err(error) => return Some(Err(error)),
+            };
+
             // Skip providers that don't match the requested service
-            if !S::should_provide(provider.as_ref()) {
+            if !S::should_provide(provider) {
                 return None;
             }
 
@@ -124,13 +186,47 @@ where
     }
 }
 
+/// An iterator over the provided services of the given type. Each service is
+/// activated on demand.
+///
+/// Not all providers can provide owned pointers to their service. Only owned
+/// services are returned, the rest are ignored.
+///
+/// ```
+/// use runtime_injector::{constant, Injector, IntoTransient, Services, Svc};
+/// use std::sync::Mutex;
+///
+/// #[derive(Clone, Copy, PartialEq, Eq, Debug)]
+/// struct Foo(usize);
+///
+/// fn make_foo(counter: Svc<Mutex<usize>>) -> Foo {
+///     // Increment the counter to track how many Foos have been created
+///     let mut counter = counter.lock().unwrap();
+///     *counter += 1;
+///     Foo(*counter)
+/// }
+///
+/// let mut builder = Injector::builder();
+/// builder.provide(constant(Mutex::new(0usize)));
+/// builder.provide(make_foo.transient());
+///
+/// let injector = builder.build();
+/// let counter: Svc<Mutex<usize>> = injector.get().unwrap();
+/// let mut foos: Services<Foo> = injector.get().unwrap();
+///
+/// let mut iter = foos.iter_owned();
+/// assert_eq!(0, *counter.lock().unwrap());
+/// assert_eq!(Foo(1), *iter.next().unwrap().unwrap());
+/// assert_eq!(1, *counter.lock().unwrap());
+/// assert!(iter.next().is_none());
+/// ```
 pub struct OwnedServicesIter<'a, S>
 where
     S: ?Sized + FromProvider,
 {
     injector: &'a Injector,
     request_info: &'a RequestInfo,
-    provider_iter: IterMut<'a, Box<dyn Provider<Interface = S::Interface>>>,
+    provider_iter: ProviderIter<'a, S::Interface>,
     _marker: PhantomData<fn() -> S>,
 }
 
@@ -142,8 +238,13 @@ where
 
     fn next(&mut self) -> Option<Self::Item> {
         self.provider_iter.find_map(|provider| {
+            let provider = match provider {
+                Ok(provider) => provider,
+                Err(error) => return Some(Err(error)),
+            };
+
             // Skip providers that don't match the requested service
-            if !S::should_provide(provider.as_ref()) {
+            if !S::should_provide(provider) {
                 return None;
             }
 
