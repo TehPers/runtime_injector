@@ -48,7 +48,7 @@ impl<S: Service> FromProvider for S {
             }
         })?;
         #[cfg(feature = "rc")]
-        let provided = service.downcast_rc().map_err(|_| {
+        let provided = provided.downcast_rc().map_err(|_| {
             InjectError::InvalidProvider {
                 service_info: ServiceInfo::of::<Self>(),
             }

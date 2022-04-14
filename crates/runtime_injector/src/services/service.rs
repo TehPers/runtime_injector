@@ -1,5 +1,5 @@
 use crate::interface;
-use downcast_rs::{impl_downcast, DowncastSync};
+use downcast_rs::impl_downcast;
 use std::{
     any::{Any, TypeId},
     error::Error,
@@ -60,12 +60,12 @@ feature_unique!(
         /// service.
     },
     {
-        pub trait Service: Downcast {}
-        impl<T: ?Sized + Downcast> Service for T {}
+        pub trait Service: downcast_rs::Downcast {}
+        impl<T: ?Sized + downcast_rs::Downcast> Service for T {}
     },
     {
-        pub trait Service: DowncastSync {}
-        impl<T: ?Sized + DowncastSync> Service for T {}
+        pub trait Service: downcast_rs::DowncastSync {}
+        impl<T: ?Sized + downcast_rs::DowncastSync> Service for T {}
     }
 );
 

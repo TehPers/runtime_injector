@@ -2,7 +2,8 @@ use crate::{
     provider_registry::{
         InterfaceRegistry, ProviderRegistry, ProviderRegistryIterMut,
     },
-    InjectError, InjectResult, Interface, MapContainer, Provider, ServiceInfo,
+    InjectResult, Interface, MapContainer, MapContainerEx, Provider,
+    ServiceInfo,
 };
 use std::slice::IterMut;
 
@@ -81,29 +82,23 @@ where
     I: ?Sized + Interface,
 {
     fn drop(&mut self) {
-        let result = self
-            .parent_registry
-            .lock()
-            .map_err(|_| {
-                InjectError::InternalError(
-                    "failed to acquire lock for interface registry".into(),
-                )
-            })
-            .and_then(|mut registry| match self.providers_source {
-                ProvidersSource::Services {
-                    ref mut providers,
-                    service_info,
-                } => {
-                    let providers = std::mem::take(providers);
-                    registry.reclaim_providers_for(service_info, providers)
-                }
-                ProvidersSource::Interface {
-                    ref mut provider_registry,
-                } => {
-                    let provider_registry = std::mem::take(provider_registry);
-                    registry.reclaim(provider_registry)
-                }
-            });
+        let result = self.parent_registry.with_inner_mut(|registry| match self
+            .providers_source
+        {
+            ProvidersSource::Services {
+                ref mut providers,
+                service_info,
+            } => {
+                let providers = std::mem::take(providers);
+                registry.reclaim_providers_for(service_info, providers)
+            }
+            ProvidersSource::Interface {
+                ref mut provider_registry,
+            } => {
+                let provider_registry = std::mem::take(provider_registry);
+                registry.reclaim(provider_registry)
+            }
+        });
 
         if let Err(error) = result {
             eprintln!(

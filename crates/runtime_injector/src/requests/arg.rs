@@ -1,6 +1,6 @@
 use crate::{
-    AsAny, InjectError, InjectResult, Injector, InjectorBuilder, Module,
-    Request, RequestInfo, RequestParameter, Service, ServiceInfo,
+    InjectError, InjectResult, Injector, InjectorBuilder, Module, Request,
+    RequestInfo, RequestParameter, Service, ServiceInfo,
 };
 use std::{
     error::Error,
@@ -125,14 +125,14 @@ impl Display for ArgRequestError {
 /// Allows defining pre-defined arguments to services.
 pub trait WithArg {
     /// Adds an argument for a service. See the docs for [`Arg<T>`].
-    fn with_arg<S: Service, T: Service + AsAny + Clone>(
+    fn with_arg<S: Service, T: Service + Clone>(
         &mut self,
         value: T,
     ) -> Option<Box<dyn RequestParameter>>;
 }
 
 impl WithArg for RequestInfo {
-    fn with_arg<S: Service, T: Service + AsAny + Clone>(
+    fn with_arg<S: Service, T: Service + Clone>(
         &mut self,
         value: T,
     ) -> Option<Box<dyn RequestParameter>> {
@@ -144,7 +144,7 @@ impl WithArg for RequestInfo {
 }
 
 impl WithArg for InjectorBuilder {
-    fn with_arg<S: Service, T: Service + AsAny + Clone>(
+    fn with_arg<S: Service, T: Service + Clone>(
         &mut self,
         value: T,
     ) -> Option<Box<dyn RequestParameter>> {
@@ -153,7 +153,7 @@ impl WithArg for InjectorBuilder {
 }
 
 impl WithArg for Module {
-    fn with_arg<S: Service, T: Service + AsAny + Clone>(
+    fn with_arg<S: Service, T: Service + Clone>(
         &mut self,
         value: T,
     ) -> Option<Box<dyn RequestParameter>> {
