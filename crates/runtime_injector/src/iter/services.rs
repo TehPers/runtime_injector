@@ -4,8 +4,9 @@ use crate::{
 };
 use std::marker::PhantomData;
 
-/// A collection of all the providers for a particular service or interface.
-/// Each service is activated only during iteration of this collection.
+/// A collection of all the implementations for a particular service or
+/// interface. Each service is activated only during iteration of this
+/// collection.
 ///
 /// If a type only has one implementation registered for it, then it may be
 /// easier to request [`Svc<I>`] from the container instead. However, if
@@ -280,4 +281,33 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::{constant, IntoSingleton};
+    use std::sync::atomic::{AtomicBool, Ordering};
+
+    #[test]
+    fn service_initialized_only_on_iteration() {
+        struct Counter;
+        impl Counter {
+            fn new(flag: Svc<AtomicBool>) -> Self {
+                flag.store(true, Ordering::Relaxed);
+                Counter
+            }
+        }
+
+        // Setup injector
+        let mut builder = Injector::builder();
+        builder.provide(Counter::new.singleton());
+        builder.provide(constant(AtomicBool::new(false)));
+
+        let injector = builder.build();
+        let mut services: Services<Counter> = injector.get().unwrap();
+        let initialized: Svc<AtomicBool> = injector.get().unwrap();
+
+        // Check that it isn't initialized yet
+        assert!(!initialized.load(Ordering::Relaxed));
+
+        // Check that it is initialized after iteration
+        let _: Svc<Counter> = services.iter().next().unwrap().unwrap();
+        assert!(initialized.load(Ordering::Relaxed));
+    }
 }

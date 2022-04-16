@@ -1,6 +1,6 @@
 use crate::{
-    FromProvider, InjectResult, InjectorBuilder, InterfaceRegistry, Providers,
-    Request, RequestInfo, ServiceInfo, ServiceType, Services, Svc,
+    FromProvider, InjectResult, InjectorBuilder, InterfaceRegistry,
+    ProviderType, Providers, Request, RequestInfo, ServiceInfo, Services, Svc,
 };
 
 pub(crate) trait MapContainerEx<T> {
@@ -296,8 +296,8 @@ impl Injector {
         &self,
         request_info: &RequestInfo,
     ) -> InjectResult<Services<S>> {
-        let providers = match S::SERVICE_TYPE {
-            ServiceType::Service => {
+        let providers = match S::PROVIDER_TYPE {
+            ProviderType::Service => {
                 let service_info = ServiceInfo::of::<S>();
                 let providers =
                     self.interface_registry.with_inner_mut(|registry| {
@@ -309,7 +309,7 @@ impl Injector {
                     service_info,
                 )
             }
-            ServiceType::Interface => self
+            ProviderType::Interface => self
                 .interface_registry
                 .with_inner_mut(|registry| registry.take())
                 .map(|provider_registry| {

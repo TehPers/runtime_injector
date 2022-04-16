@@ -2,16 +2,23 @@ use crate::{
     InjectError, InjectResult, Interface, Provider, Service, ServiceInfo, Svc,
 };
 
+/// The type of provider that should be requested.
 #[derive(Clone, Copy, PartialEq, Eq, Debug, Hash)]
-pub enum ServiceType {
+pub enum ProviderType {
+    /// Providers for implementations of services should be requested.
     Service,
+    /// Providers for implementations of an interface should be requested.
     Interface,
 }
 
+/// A type that can be requested from a provider.
 pub trait FromProvider: Service {
+    /// The interface to request providers for.
     type Interface: ?Sized + Interface;
 
-    const SERVICE_TYPE: ServiceType;
+    /// The type of providers to request. Providers can either provide
+    /// implementations of a service type or of an interface type.
+    const PROVIDER_TYPE: ProviderType;
 
     fn should_provide(
         provider: &dyn Provider<Interface = Self::Interface>,
@@ -28,7 +35,7 @@ pub trait FromProvider: Service {
 impl<S: Service> FromProvider for S {
     type Interface = dyn Service;
 
-    const SERVICE_TYPE: ServiceType = ServiceType::Service;
+    const PROVIDER_TYPE: ProviderType = ProviderType::Service;
 
     #[inline]
     fn should_provide(

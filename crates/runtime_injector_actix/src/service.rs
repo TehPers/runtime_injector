@@ -3,7 +3,7 @@ use actix_web::{
 };
 use futures_util::future::{err, ok, Ready};
 use runtime_injector::{Injector, Request};
-use std::ops::Deref;
+use std::{fmt::Display, ops::Deref};
 
 /// An injected request. Any request to the [`Injector`] can be injected by
 /// wrapping it in this type and providing it as a parameter to your request
@@ -39,16 +39,24 @@ use std::ops::Deref;
 /// }
 /// ```
 #[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Debug, Hash)]
-pub struct Injected<R: Request>(R);
+pub struct Injected<R>(R)
+where
+    R: Request;
 
-impl<R: Request> Injected<R> {
+impl<R> Injected<R>
+where
+    R: Request,
+{
     /// Converts an [`Injected<R>`] to its inner value.
     pub fn into_inner(value: Injected<R>) -> R {
         value.0
     }
 }
 
-impl<R: Request> Deref for Injected<R> {
+impl<R> Deref for Injected<R>
+where
+    R: Request,
+{
     type Target = R;
 
     fn deref(&self) -> &Self::Target {
@@ -56,10 +64,21 @@ impl<R: Request> Deref for Injected<R> {
     }
 }
 
-impl<R: Request> FromRequest for Injected<R> {
+impl<R> Display for Injected<R>
+where
+    R: Request + Display,
+{
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        self.0.fmt(f)
+    }
+}
+
+impl<R> FromRequest for Injected<R>
+where
+    R: Request,
+{
     type Error = actix_web::Error;
     type Future = Ready<actix_web::Result<Self>>;
-    type Config = ();
 
     fn from_request(req: &HttpRequest, _payload: &mut Payload) -> Self::Future {
         let injector: &Injector = match req.app_data() {

@@ -20,6 +20,37 @@ where
     },
 }
 
+/// A collection of all the providers for a particular service or interface. No
+/// services are activated during iteration of this collection.
+///
+/// ```
+/// use runtime_injector::{
+///     interface, Injector, IntoTransient, Providers, Service, Svc,
+///     TypedProvider, WithInterface,
+/// };
+///
+/// trait Fooable: Service {
+///     fn baz(&self) {}
+/// }
+///
+/// interface!(Fooable);
+///
+/// #[derive(Default)]
+/// struct Foo;
+/// impl Fooable for Foo {}
+///
+/// #[derive(Default)]
+/// struct Bar;
+/// impl Fooable for Bar {}
+///
+/// let mut builder = Injector::builder();
+/// builder.provide(Foo::default.transient().with_interface::<dyn Fooable>());
+/// builder.provide(Bar::default.transient().with_interface::<dyn Fooable>());
+///
+/// let injector = builder.build();
+/// let mut fooables: Providers<dyn Fooable> = injector.get().unwrap();
+/// assert_eq!(2, fooables.iter().count());
+/// ```
 pub struct Providers<I>
 where
     I: ?Sized + Interface,
@@ -58,6 +89,8 @@ where
         }
     }
 
+    /// Gets all the providers for the given type. No services are activated
+    /// during iteration of this collection.
     #[inline]
     pub fn iter(&mut self) -> ProviderIter<'_, I> {
         match self.providers_source {
@@ -122,6 +155,8 @@ where
     }
 }
 
+/// An iterator over the providers for services of the given type. No services
+/// are activated during iteration of this collection.
 pub struct ServiceProviderIter<'a, I>
 where
     I: ?Sized + Interface,
@@ -149,6 +184,8 @@ where
     }
 }
 
+/// An iterator over the providers for the given interface type. No services
+/// are activated during iteration of this collection.
 pub struct InterfaceProviderIter<'a, I>
 where
     I: ?Sized + Interface,
@@ -167,11 +204,14 @@ where
     }
 }
 
+/// An iterator over the providers for the given service or interface type.
 pub enum ProviderIter<'a, I>
 where
     I: ?Sized + Interface,
 {
+    /// Iterator over providers for a service type.
     Services(ServiceProviderIter<'a, I>),
+    /// Iterator over providers for an interface type.
     Interface(InterfaceProviderIter<'a, I>),
 }
 
