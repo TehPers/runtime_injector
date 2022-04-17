@@ -214,8 +214,15 @@ impl Display for InjectError {
             }
             InjectError::MissingDependency {
                 service_info,
-                ..
-            } => write!(f, "{} is missing a dependency", service_info.name()),
+                dependency_info,
+            } => {
+                write!(
+                    f,
+                    "{} has no provider (required by {})",
+                    dependency_info.name(),
+                    service_info.name()
+                )
+            },
             InjectError::CycleDetected {
                 service_info,
                 cycle,

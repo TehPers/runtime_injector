@@ -18,14 +18,14 @@ pub trait Provider: Service {
 
     /// Provides an instance of the service.
     fn provide(
-        &mut self,
+        &self,
         injector: &Injector,
         request_info: &RequestInfo,
     ) -> InjectResult<Svc<Self::Interface>>;
 
     /// Provides an owned instance of the service.
     fn provide_owned(
-        &mut self,
+        &self,
         _injector: &Injector,
         _request_info: &RequestInfo,
     ) -> InjectResult<Box<Self::Interface>> {
@@ -61,7 +61,7 @@ pub trait Provider: Service {
 ///     type Result = Foo;
 ///
 ///     fn provide_typed(
-///         &mut self,
+///         &self,
 ///         _injector: &Injector,
 ///         _request_info: &RequestInfo,
 ///     ) -> InjectResult<Svc<Self::Result>> {
@@ -87,7 +87,7 @@ pub trait TypedProvider:
     /// Provides an instance of the service. The [`Injector`] passed in can be
     /// used to retrieve instances of any dependencies this service has.
     fn provide_typed(
-        &mut self,
+        &self,
         injector: &Injector,
         request_info: &RequestInfo,
     ) -> InjectResult<Svc<Self::Result>>;
@@ -95,7 +95,7 @@ pub trait TypedProvider:
     /// Provides an owned instance of the service. Not all providers can
     /// provide an owned variant of the service.
     fn provide_owned_typed(
-        &mut self,
+        &self,
         _injector: &Injector,
         _request_info: &RequestInfo,
     ) -> InjectResult<Box<Self::Result>> {
@@ -116,7 +116,7 @@ where
     }
 
     fn provide(
-        &mut self,
+        &self,
         injector: &Injector,
         request_info: &RequestInfo,
     ) -> InjectResult<Svc<Self::Interface>> {
@@ -125,7 +125,7 @@ where
     }
 
     fn provide_owned(
-        &mut self,
+        &self,
         injector: &Injector,
         request_info: &RequestInfo,
     ) -> InjectResult<Box<Self::Interface>> {

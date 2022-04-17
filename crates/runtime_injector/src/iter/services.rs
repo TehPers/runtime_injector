@@ -1,8 +1,7 @@
 use crate::{
     FromProvider, InjectError, InjectResult, Injector, ProviderIter, Providers,
-    RequestInfo, ServiceInfo, Svc,
+    RequestInfo, Svc,
 };
-use std::marker::PhantomData;
 
 /// A collection of all the implementations for a particular service or
 /// interface. Each service is activated only during iteration of this
@@ -54,8 +53,7 @@ where
 {
     injector: Injector,
     request_info: RequestInfo,
-    providers: Providers<S::Interface>,
-    _marker: PhantomData<fn() -> S>,
+    providers: Providers<S>,
 }
 
 impl<S> Services<S>
@@ -66,13 +64,12 @@ where
     pub(crate) fn new(
         injector: Injector,
         request_info: RequestInfo,
-        providers: Providers<S::Interface>,
+        providers: Providers<S>,
     ) -> Self {
         Services {
             injector,
             request_info,
             providers,
-            _marker: PhantomData,
         }
     }
 
@@ -84,7 +81,6 @@ where
             injector: &self.injector,
             request_info: &self.request_info,
             provider_iter: self.providers.iter(),
-            _marker: PhantomData,
         }
     }
 
@@ -96,7 +92,6 @@ where
             injector: &self.injector,
             request_info: &self.request_info,
             provider_iter: self.providers.iter(),
-            _marker: PhantomData,
         }
     }
 }
@@ -137,8 +132,7 @@ where
 {
     injector: &'a Injector,
     request_info: &'a RequestInfo,
-    provider_iter: ProviderIter<'a, S::Interface>,
-    _marker: PhantomData<fn() -> S>,
+    provider_iter: ProviderIter<'a, S>,
 }
 
 impl<'a, S> Iterator for ServicesIter<'a, S>
@@ -149,29 +143,11 @@ where
 
     fn next(&mut self) -> Option<Self::Item> {
         self.provider_iter.find_map(|provider| {
-            let provider = match provider {
-                Ok(provider) => provider,
-                Err(error) => return Some(Err(error)),
-            };
-
-            // Skip providers that don't match the requested service
-            if !S::should_provide(provider) {
-                return None;
-            }
-
             // Provide the service
             let service =
                 match provider.provide(self.injector, self.request_info) {
                     Ok(service) => service,
                     Err(InjectError::ConditionsNotMet { .. }) => return None,
-                    Err(InjectError::CycleDetected { mut cycle, .. }) => {
-                        let service_info = ServiceInfo::of::<S>();
-                        cycle.push(service_info);
-                        return Some(Err(InjectError::CycleDetected {
-                            service_info,
-                            cycle,
-                        }));
-                    }
                     Err(error) => return Some(Err(error)),
                 };
 
@@ -227,8 +203,7 @@ where
 {
     injector: &'a Injector,
     request_info: &'a RequestInfo,
-    provider_iter: ProviderIter<'a, S::Interface>,
-    _marker: PhantomData<fn() -> S>,
+    provider_iter: ProviderIter<'a, S>,
 }
 
 impl<'a, S> Iterator for OwnedServicesIter<'a, S>
@@ -239,30 +214,12 @@ where
 
     fn next(&mut self) -> Option<Self::Item> {
         self.provider_iter.find_map(|provider| {
-            let provider = match provider {
-                Ok(provider) => provider,
-                Err(error) => return Some(Err(error)),
-            };
-
-            // Skip providers that don't match the requested service
-            if !S::should_provide(provider) {
-                return None;
-            }
-
             // Provide the service
             let service = match provider
                 .provide_owned(self.injector, self.request_info)
             {
                 Ok(service) => service,
                 Err(InjectError::ConditionsNotMet { .. }) => return None,
-                Err(InjectError::CycleDetected { mut cycle, .. }) => {
-                    let service_info = ServiceInfo::of::<S>();
-                    cycle.push(service_info);
-                    return Some(Err(InjectError::CycleDetected {
-                        service_info,
-                        cycle,
-                    }));
-                }
                 Err(error) => return Some(Err(error)),
             };
 

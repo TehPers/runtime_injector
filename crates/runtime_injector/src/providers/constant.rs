@@ -31,7 +31,7 @@ where
     type Result = R;
 
     fn provide_typed(
-        &mut self,
+        &self,
         _injector: &Injector,
         _request_info: &RequestInfo,
     ) -> InjectResult<Svc<Self::Result>> {

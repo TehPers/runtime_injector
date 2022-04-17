@@ -1,60 +1,7 @@
 use crate::{
-    FromProvider, InjectResult, InjectorBuilder, InterfaceRegistry,
-    ProviderType, Providers, Request, RequestInfo, ServiceInfo, Services, Svc,
+    FromProvider, InjectResult, InjectorBuilder, InterfaceRegistry, Providers,
+    Request, RequestInfo, Svc,
 };
-
-pub(crate) trait MapContainerEx<T> {
-    fn new(value: T) -> Self;
-    fn with_inner<R, F: FnOnce(&T) -> R>(&self, f: F) -> R;
-    fn with_inner_mut<R, F: FnOnce(&mut T) -> R>(&self, f: F) -> R;
-}
-
-#[cfg(feature = "rc")]
-mod types {
-    use super::MapContainerEx;
-    use std::{cell::RefCell, rc::Rc};
-
-    pub type MapContainer<T> = Rc<RefCell<T>>;
-
-    impl<T> MapContainerEx<T> for MapContainer<T> {
-        fn new(value: T) -> Self {
-            Rc::new(RefCell::new(value))
-        }
-
-        fn with_inner<R, F: FnOnce(&T) -> R>(&self, f: F) -> R {
-            f(&*self.borrow())
-        }
-
-        fn with_inner_mut<R, F: FnOnce(&mut T) -> R>(&self, f: F) -> R {
-            f(&mut *self.borrow_mut())
-        }
-    }
-}
-
-#[cfg(feature = "arc")]
-mod types {
-    use super::MapContainerEx;
-    use std::sync::{Arc, Mutex};
-
-    pub type MapContainer<T> = Arc<Mutex<T>>;
-
-    impl<T> MapContainerEx<T> for MapContainer<T> {
-        fn new(value: T) -> Self {
-            Arc::new(Mutex::new(value))
-        }
-
-        fn with_inner<R, F: FnOnce(&T) -> R>(&self, f: F) -> R {
-            f(&*self.lock().unwrap())
-        }
-
-        fn with_inner_mut<R, F: FnOnce(&mut T) -> R>(&self, f: F) -> R {
-            f(&mut *self.lock().unwrap())
-        }
-    }
-}
-
-#[allow(clippy::wildcard_imports)]
-pub(crate) use types::*;
 
 /// A runtime dependency injection container. This holds all the bindings
 /// between service types and their providers, as well as all the mappings from
@@ -112,7 +59,7 @@ pub(crate) use types::*;
 /// ```
 #[derive(Clone, Debug, Default)]
 pub struct Injector {
-    interface_registry: MapContainer<InterfaceRegistry>,
+    interface_registry: Svc<InterfaceRegistry>,
     root_request_info: Svc<RequestInfo>,
 }
 
@@ -129,7 +76,7 @@ impl Injector {
         request_info: RequestInfo,
     ) -> Self {
         Injector {
-            interface_registry: MapContainerEx::new(interface_registry),
+            interface_registry: Svc::new(interface_registry),
             root_request_info: Svc::new(request_info),
         }
     }
@@ -289,38 +236,9 @@ impl Injector {
         R::request(self, request_info)
     }
 
-    /// Gets implementations of a service from the container. This is
-    /// equivalent to requesting [`Services<T>`] from [`Injector::get()`].
     #[doc(hidden)]
-    pub fn get_all<S: ?Sized + FromProvider>(
-        &self,
-        request_info: &RequestInfo,
-    ) -> InjectResult<Services<S>> {
-        let providers = match S::PROVIDER_TYPE {
-            ProviderType::Service => {
-                let service_info = ServiceInfo::of::<S>();
-                let providers =
-                    self.interface_registry.with_inner_mut(|registry| {
-                        registry.take_providers_for(service_info)
-                    })?;
-                Providers::services(
-                    self.interface_registry.clone(),
-                    providers,
-                    service_info,
-                )
-            }
-            ProviderType::Interface => self
-                .interface_registry
-                .with_inner_mut(|registry| registry.take())
-                .map(|provider_registry| {
-                    Providers::interface(
-                        self.interface_registry.clone(),
-                        provider_registry,
-                    )
-                })?,
-        };
-
-        Ok(Services::new(self.clone(), request_info.clone(), providers))
+    pub fn get_providers<S: ?Sized + FromProvider>(&self) -> Providers<S> {
+        Providers::new(self.interface_registry.get_providers())
     }
 }
 
@@ -343,7 +261,7 @@ mod tests {
             }
 
             fn provide(
-                &mut self,
+                &self,
                 _injector: &Injector,
                 _request_info: &RequestInfo,
             ) -> InjectResult<DynSvc> {

@@ -23,7 +23,7 @@ where
     type Result = P::Result;
 
     fn provide_typed(
-        &mut self,
+        &self,
         injector: &Injector,
         request_info: &RequestInfo,
     ) -> InjectResult<Svc<Self::Result>> {
@@ -31,7 +31,7 @@ where
     }
 
     fn provide_owned_typed(
-        &mut self,
+        &self,
         injector: &Injector,
         request_info: &RequestInfo,
     ) -> InjectResult<Box<Self::Result>> {

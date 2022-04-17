@@ -1,6 +1,6 @@
 use crate::{
-    InjectResult, Injector, RequestInfo, Service, ServiceFactory, Svc,
-    TypedProvider,
+    InjectResult, Injector, RequestInfo, Service, ServiceFactory, ServiceInfo,
+    Svc, TypedProvider,
 };
 use std::marker::PhantomData;
 
@@ -13,7 +13,10 @@ where
     F: ServiceFactory<D, Result = R>,
 {
     factory: F,
-    result: Option<Svc<R>>,
+    #[cfg(feature = "arc")]
+    result: std::sync::RwLock<Option<Svc<R>>>,
+    #[cfg(feature = "rc")]
+    result: std::cell::RefCell<Option<Svc<R>>>,
     marker: PhantomData<fn(D) -> R>,
 }
 
@@ -27,7 +30,7 @@ where
     pub fn new(func: F) -> Self {
         SingletonProvider {
             factory: func,
-            result: None,
+            result: Default::default(),
             marker: PhantomData,
         }
     }
@@ -43,17 +46,46 @@ where
     type Result = R;
 
     fn provide_typed(
-        &mut self,
+        &self,
         injector: &Injector,
         request_info: &RequestInfo,
     ) -> InjectResult<Svc<Self::Result>> {
-        if let Some(ref service) = self.result {
-            return Ok(service.clone());
-        }
+        let request_info =
+            request_info.with_request(ServiceInfo::of::<Self::Result>())?;
 
-        let result = self.factory.invoke(injector, request_info)?;
-        let result = Svc::new(result);
-        self.result = Some(result.clone());
+        #[cfg(feature = "arc")]
+        let result = {
+            // Check if already stored - fast path
+            let stored = self.result.read().unwrap();
+            if let Some(result) = stored.as_ref() {
+                return Ok(result.clone());
+            }
+            drop(stored);
+
+            // Create new service if needed - slow path
+            let mut stored = self.result.write().unwrap();
+            match &mut *stored {
+                Some(stored) => return Ok(stored.clone()),
+                stored @ None => {
+                    let result =
+                        self.factory.invoke(injector, &request_info)?;
+                    stored.insert(Svc::new(result)).clone()
+                }
+            }
+        };
+        #[cfg(feature = "rc")]
+        let result = {
+            // Create new service if needed
+            let mut stored = self.result.borrow_mut();
+            match &mut *stored {
+                Some(stored) => return Ok(stored.clone()),
+                stored @ None => {
+                    let result =
+                        self.factory.invoke(injector, &request_info)?;
+                    stored.insert(Svc::new(result)).clone()
+                }
+            }
+        };
         Ok(result)
     }
 }

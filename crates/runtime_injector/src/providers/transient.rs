@@ -1,6 +1,6 @@
 use crate::{
-    InjectResult, Injector, RequestInfo, Service, ServiceFactory, Svc,
-    TypedProvider,
+    InjectResult, Injector, RequestInfo, Service, ServiceFactory, ServiceInfo,
+    Svc, TypedProvider,
 };
 use std::marker::PhantomData;
 
@@ -41,20 +41,24 @@ where
     type Result = R;
 
     fn provide_typed(
-        &mut self,
+        &self,
         injector: &Injector,
         request_info: &RequestInfo,
     ) -> InjectResult<Svc<Self::Result>> {
-        let result = self.factory.invoke(injector, request_info)?;
+        let request_info =
+            request_info.with_request(ServiceInfo::of::<Self::Result>())?;
+        let result = self.factory.invoke(injector, &request_info)?;
         Ok(Svc::new(result))
     }
 
     fn provide_owned_typed(
-        &mut self,
+        &self,
         injector: &Injector,
         request_info: &RequestInfo,
     ) -> InjectResult<Box<Self::Result>> {
-        let result = self.factory.invoke(injector, request_info)?;
+        let request_info =
+            request_info.with_request(ServiceInfo::of::<Self::Result>())?;
+        let result = self.factory.invoke(injector, &request_info)?;
         Ok(Box::new(result))
     }
 }

@@ -76,9 +76,6 @@ macro_rules! interface {
         impl $crate::FromProvider for dyn $interface {
             type Interface = Self;
 
-            const PROVIDER_TYPE: $crate::ProviderType =
-                $crate::ProviderType::Interface;
-
             fn should_provide(
                 _provider: &dyn $crate::Provider<Interface = Self::Interface>,
             ) -> bool {

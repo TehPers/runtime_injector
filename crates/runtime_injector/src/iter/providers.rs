@@ -1,24 +1,6 @@
 use crate::{
-    provider_registry::{
-        InterfaceRegistry, ProviderRegistry, ProviderRegistryIterMut,
-    },
-    InjectResult, Interface, MapContainer, MapContainerEx, Provider,
-    ServiceInfo,
+    FromProvider, Provider, ProviderRegistry, ProviderRegistryIter, Svc,
 };
-use std::slice::IterMut;
-
-enum ProvidersSource<I>
-where
-    I: ?Sized + Interface,
-{
-    Services {
-        providers: Vec<Box<dyn Provider<Interface = I>>>,
-        service_info: ServiceInfo,
-    },
-    Interface {
-        provider_registry: ProviderRegistry<I>,
-    },
-}
 
 /// A collection of all the providers for a particular service or interface. No
 /// services are activated during iteration of this collection.
@@ -51,180 +33,68 @@ where
 /// let mut fooables: Providers<dyn Fooable> = injector.get().unwrap();
 /// assert_eq!(2, fooables.iter().count());
 /// ```
-pub struct Providers<I>
+pub struct Providers<S>
 where
-    I: ?Sized + Interface,
+    S: ?Sized + FromProvider,
 {
-    parent_registry: MapContainer<InterfaceRegistry>,
-    providers_source: ProvidersSource<I>,
+    parent_registry: Svc<ProviderRegistry<S::Interface>>,
 }
 
-impl<I> Providers<I>
+impl<S> Providers<S>
 where
-    I: ?Sized + Interface,
+    S: ?Sized + FromProvider,
 {
-    #[inline]
-    pub(crate) fn services(
-        parent_registry: MapContainer<InterfaceRegistry>,
-        providers: Vec<Box<dyn Provider<Interface = I>>>,
-        service_info: ServiceInfo,
+    pub(crate) fn new(
+        parent_registry: Svc<ProviderRegistry<S::Interface>>,
     ) -> Self {
-        Providers {
-            parent_registry,
-            providers_source: ProvidersSource::Services {
-                providers,
-                service_info,
-            },
-        }
-    }
-
-    #[inline]
-    pub(crate) fn interface(
-        parent_registry: MapContainer<InterfaceRegistry>,
-        provider_registry: ProviderRegistry<I>,
-    ) -> Self {
-        Providers {
-            parent_registry,
-            providers_source: ProvidersSource::Interface { provider_registry },
-        }
+        Self { parent_registry }
     }
 
     /// Gets all the providers for the given type. No services are activated
     /// during iteration of this collection.
     #[inline]
-    pub fn iter(&mut self) -> ProviderIter<'_, I> {
-        match self.providers_source {
-            ProvidersSource::Services {
-                ref mut providers,
-                service_info,
-            } => ProviderIter::Services(ServiceProviderIter {
-                providers: providers.iter_mut(),
-                service_info,
-            }),
-            ProvidersSource::Interface {
-                ref mut provider_registry,
-            } => ProviderIter::Interface(InterfaceProviderIter {
-                inner: provider_registry.iter_mut(),
-            }),
+    pub fn iter(&mut self) -> ProviderIter<'_, S> {
+        ProviderIter {
+            inner: self.parent_registry.iter(),
         }
     }
 }
 
-impl<I> Drop for Providers<I>
+impl<'a, S> IntoIterator for &'a mut Providers<S>
 where
-    I: ?Sized + Interface,
+    S: ?Sized + FromProvider,
 {
-    fn drop(&mut self) {
-        let result = self.parent_registry.with_inner_mut(|registry| match self
-            .providers_source
-        {
-            ProvidersSource::Services {
-                ref mut providers,
-                service_info,
-            } => {
-                let providers = std::mem::take(providers);
-                registry.reclaim_providers_for(service_info, providers)
-            }
-            ProvidersSource::Interface {
-                ref mut provider_registry,
-            } => {
-                let provider_registry = std::mem::take(provider_registry);
-                registry.reclaim(provider_registry)
-            }
-        });
-
-        if let Err(error) = result {
-            eprintln!(
-                "An error occurred while releasing providiers for {}: {:?}",
-                ServiceInfo::of::<I>().name(),
-                error
-            );
-        }
-    }
-}
-
-impl<'a, I> IntoIterator for &'a mut Providers<I>
-where
-    I: ?Sized + Interface,
-{
-    type Item = InjectResult<&'a mut dyn Provider<Interface = I>>;
-    type IntoIter = ProviderIter<'a, I>;
+    type Item = &'a dyn Provider<Interface = S::Interface>;
+    type IntoIter = ProviderIter<'a, S>;
 
     fn into_iter(self) -> Self::IntoIter {
         self.iter()
     }
 }
 
-/// An iterator over the providers for services of the given type. No services
-/// are activated during iteration of this collection.
-pub struct ServiceProviderIter<'a, I>
+/// An iterator over the providers for the given service or interface type.
+pub struct ProviderIter<'a, S>
 where
-    I: ?Sized + Interface,
+    S: ?Sized + FromProvider,
 {
-    providers: IterMut<'a, Box<dyn Provider<Interface = I>>>,
-    service_info: ServiceInfo,
+    inner: ProviderRegistryIter<'a, S::Interface>,
 }
 
-impl<'a, I> Iterator for ServiceProviderIter<'a, I>
+impl<'a, S> Iterator for ProviderIter<'a, S>
 where
-    I: ?Sized + Interface,
+    S: ?Sized + FromProvider,
 {
-    type Item = InjectResult<&'a mut dyn Provider<Interface = I>>;
+    type Item = &'a dyn Provider<Interface = S::Interface>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        self.providers.find_map(|provider| {
-            // Skip providers that don't match the requested service
-            if provider.result() != self.service_info {
+        self.inner.find_map(|provider| {
+            // Skip providers that don't match the filter
+            if !S::should_provide(provider) {
                 return None;
             }
 
             // Return the provider
-            Some(Ok(provider.as_mut()))
+            Some(provider)
         })
-    }
-}
-
-/// An iterator over the providers for the given interface type. No services
-/// are activated during iteration of this collection.
-pub struct InterfaceProviderIter<'a, I>
-where
-    I: ?Sized + Interface,
-{
-    inner: ProviderRegistryIterMut<'a, I>,
-}
-
-impl<'a, I> Iterator for InterfaceProviderIter<'a, I>
-where
-    I: ?Sized + Interface,
-{
-    type Item = InjectResult<&'a mut dyn Provider<Interface = I>>;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        self.inner.next()
-    }
-}
-
-/// An iterator over the providers for the given service or interface type.
-pub enum ProviderIter<'a, I>
-where
-    I: ?Sized + Interface,
-{
-    /// Iterator over providers for a service type.
-    Services(ServiceProviderIter<'a, I>),
-    /// Iterator over providers for an interface type.
-    Interface(InterfaceProviderIter<'a, I>),
-}
-
-impl<'a, I> Iterator for ProviderIter<'a, I>
-where
-    I: ?Sized + Interface,
-{
-    type Item = InjectResult<&'a mut dyn Provider<Interface = I>>;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        match self {
-            ProviderIter::Services(inner) => inner.next(),
-            ProviderIter::Interface(inner) => inner.next(),
-        }
     }
 }

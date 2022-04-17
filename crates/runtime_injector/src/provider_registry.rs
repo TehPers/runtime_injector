@@ -1,149 +1,43 @@
-use crate::{
-    InjectError, InjectResult, Interface, Provider, Service, ServiceInfo,
-};
+use crate::{Interface, Provider, Service, ServiceInfo, Svc};
 use std::{
-    collections::{hash_map::ValuesMut, HashMap},
+    collections::{hash_map::Values, HashMap},
     fmt::{Debug, Formatter},
-    slice::IterMut,
+    slice::Iter,
 };
-
-pub(crate) struct Slot<T>(Option<T>);
-
-impl<T> Slot<T> {
-    pub fn take(&mut self) -> Option<T> {
-        self.0.take()
-    }
-
-    pub fn replace(&mut self, value: T) -> Option<T> {
-        self.0.replace(value)
-    }
-
-    pub fn inner(&self) -> Option<&T> {
-        self.0.as_ref()
-    }
-
-    pub fn inner_mut(&mut self) -> Option<&mut T> {
-        self.0.as_mut()
-    }
-
-    pub fn with_inner_mut<R, F>(&mut self, f: F) -> Option<R>
-    where
-        F: FnOnce(&mut T) -> R,
-    {
-        self.0.as_mut().map(f)
-    }
-
-    pub fn into_inner(self) -> Option<T> {
-        self.0
-    }
-}
-
-impl<T> Default for Slot<T>
-where
-    T: Default,
-{
-    fn default() -> Self {
-        Self(Some(Default::default()))
-    }
-}
-
-impl<T> From<T> for Slot<T> {
-    fn from(value: T) -> Self {
-        Self(Some(value))
-    }
-}
-
-impl<T> From<Option<T>> for Slot<T> {
-    fn from(value: Option<T>) -> Self {
-        Self(value)
-    }
-}
-
-pub(crate) type ProviderSlot<I> = Slot<Vec<Box<dyn Provider<Interface = I>>>>;
-
-impl<I> Debug for ProviderSlot<I>
-where
-    I: ?Sized + Interface,
-{
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        match self.inner() {
-            Some(providers) => f
-                .debug_tuple("Slot")
-                .field(&format_args!("<{} provider(s)>", providers.len()))
-                .finish(),
-            None => f.debug_tuple("Slot").field(&"<providers in use>").finish(),
-        }
-    }
-}
-
-impl Debug for Slot<Box<dyn ProviderRegistryType>> {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        f.debug_tuple("Slot").field(&self.0).finish()
-    }
-}
 
 /// Stores providers for a particular interface
 pub(crate) struct ProviderRegistry<I>
 where
     I: ?Sized + Interface,
 {
-    providers: HashMap<ServiceInfo, ProviderSlot<I>>,
+    providers: HashMap<ServiceInfo, Vec<Svc<dyn Provider<Interface = I>>>>,
 }
 
 impl<I> ProviderRegistry<I>
 where
     I: ?Sized + Interface,
 {
-    pub fn new(providers: HashMap<ServiceInfo, ProviderSlot<I>>) -> Self {
-        ProviderRegistry { providers }
-    }
-
-    /// Gets the providers for a particular service type.
-    pub fn take_providers_for(
+    pub fn add_provider_for(
         &mut self,
         service_info: ServiceInfo,
-    ) -> InjectResult<Vec<Box<dyn Provider<Interface = I>>>> {
-        // Get the provider list slot
-        let slot = self
-            .providers
-            .get_mut(&service_info)
-            .ok_or_else(|| InjectError::MissingProvider { service_info })?;
-
-        // Ensure the providers are not in use
-        slot.take().ok_or_else(|| InjectError::CycleDetected {
-            service_info,
-            cycle: vec![service_info],
-        })
+        provider: Svc<dyn Provider<Interface = I>>,
+    ) {
+        self.providers
+            .entry(service_info)
+            .or_default()
+            .push(provider);
     }
 
-    /// Reclaims the providers for a particular service type.
-    pub fn reclaim_providers_for(
+    pub fn remove_providers_for(
         &mut self,
         service_info: ServiceInfo,
-        providers: Vec<Box<dyn Provider<Interface = I>>>,
-    ) -> InjectResult<()> {
-        // Get the provider list slot
-        let slot = self.providers.get_mut(&service_info).ok_or_else(|| {
-            InjectError::InternalError(format!(
-                "activated provider for {} is no longer registered",
-                service_info.name()
-            ))
-        })?;
-
-        // Insert the providers back into the list, ensuring the list is in use
-        if slot.replace(providers).is_some() {
-            Err(InjectError::InternalError(format!(
-                "another provider for {} was added during its activation",
-                service_info.name()
-            )))
-        } else {
-            Ok(())
-        }
+    ) -> Option<Vec<Svc<dyn Provider<Interface = I>>>> {
+        self.providers.remove(&service_info)
     }
 
-    pub fn iter_mut(&mut self) -> ProviderRegistryIterMut<'_, I> {
-        ProviderRegistryIterMut {
-            values: self.providers.values_mut(),
+    pub fn iter(&self) -> ProviderRegistryIter<'_, I> {
+        ProviderRegistryIter {
+            values: self.providers.values(),
             cur_slot: None,
         }
     }
@@ -154,8 +48,12 @@ where
     I: ?Sized + Interface,
 {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("ProviderRegistry")
-            .field("providers", &self.providers)
+        f.debug_map()
+            .entries(
+                self.providers.iter().filter(|(_, v)| !v.is_empty()).map(
+                    |(k, v)| (k.name(), format!("<{} providers>", v.len())),
+                ),
+            )
             .finish()
     }
 }
@@ -171,47 +69,62 @@ where
     }
 }
 
-pub(crate) struct ProviderRegistryIterMut<'a, I>
+pub(crate) struct ProviderRegistryIter<'a, I>
 where
     I: ?Sized + Interface,
 {
-    values: ValuesMut<'a, ServiceInfo, ProviderSlot<I>>,
-    cur_slot: Option<IterMut<'a, Box<dyn Provider<Interface = I>>>>,
+    values: Values<'a, ServiceInfo, Vec<Svc<dyn Provider<Interface = I>>>>,
+    cur_slot: Option<Iter<'a, Svc<dyn Provider<Interface = I>>>>,
 }
 
-impl<'a, I> Iterator for ProviderRegistryIterMut<'a, I>
+impl<'a, I> Iterator for ProviderRegistryIter<'a, I>
 where
     I: ?Sized + Interface,
 {
-    type Item = InjectResult<&'a mut dyn Provider<Interface = I>>;
+    type Item = &'a dyn Provider<Interface = I>;
 
     fn next(&mut self) -> Option<Self::Item> {
         loop {
             // Try to get next item in current slot
             if let Some(next) = self.cur_slot.as_mut().and_then(Iterator::next)
             {
-                return Some(Ok(next.as_mut()));
+                return Some(next.as_ref());
             }
 
             // Try to go to next slot
-            let slot = self.values.next()?;
-            let providers = match slot.inner_mut() {
-                Some(providers) => providers,
-                None => {
-                    return Some(Err(InjectError::InternalError(format!(
-                        "providers for {:?} are in use",
-                        ServiceInfo::of::<I>().name()
-                    ))))
-                }
-            };
-            self.cur_slot = Some(providers.iter_mut());
+            let next_slot = self.values.next()?;
+            self.cur_slot = Some(next_slot.iter());
         }
     }
 }
 
 /// Marker trait for provider registries.
-pub(crate) trait ProviderRegistryType: Service + Debug {}
-impl<I> ProviderRegistryType for ProviderRegistry<I> where I: ?Sized + Interface {}
+pub(crate) trait ProviderRegistryType: Service + Debug {
+    fn merge(
+        &mut self,
+        other: Box<dyn ProviderRegistryType>,
+    ) -> Result<(), Box<dyn ProviderRegistryType>>;
+}
+
+impl<I> ProviderRegistryType for ProviderRegistry<I>
+where
+    I: ?Sized + Interface,
+{
+    fn merge(
+        &mut self,
+        other: Box<dyn ProviderRegistryType>,
+    ) -> Result<(), Box<dyn ProviderRegistryType>> {
+        let other: Box<Self> = other.downcast()?;
+        for (service_info, mut other_providers) in other.providers {
+            self.providers
+                .entry(service_info)
+                .or_default()
+                .append(&mut other_providers);
+        }
+
+        Ok(())
+    }
+}
 
 #[cfg(feature = "arc")]
 downcast_rs::impl_downcast!(sync ProviderRegistryType);
@@ -221,148 +134,38 @@ downcast_rs::impl_downcast!(ProviderRegistryType);
 
 #[derive(Debug, Default)]
 pub(crate) struct InterfaceRegistry {
-    provider_registries:
-        HashMap<ServiceInfo, Slot<Box<dyn ProviderRegistryType>>>,
+    registries: HashMap<ServiceInfo, Svc<dyn ProviderRegistryType>>,
 }
 
 impl InterfaceRegistry {
     pub fn new(
         provider_registries: HashMap<
             ServiceInfo,
-            Slot<Box<dyn ProviderRegistryType>>,
+            Svc<dyn ProviderRegistryType>,
         >,
     ) -> Self {
         InterfaceRegistry {
-            provider_registries,
+            registries: provider_registries,
         }
     }
 
-    pub fn take<I>(&mut self) -> InjectResult<ProviderRegistry<I>>
+    pub fn get_providers<I>(&self) -> Svc<ProviderRegistry<I>>
     where
         I: ?Sized + Interface,
     {
+        // If a provider registry for the given interface is not found, an
+        // empty one is returned. This allows requests for interfaces that have
+        // no providers registered to still work without returning an error.
         let interface_info = ServiceInfo::of::<I>();
-        self.provider_registries
-            .get_mut(&interface_info)
-            .ok_or_else(|| InjectError::MissingProvider {
-                service_info: interface_info,
-            })?
-            .take()
-            .ok_or_else(|| InjectError::CycleDetected {
-                service_info: interface_info,
-                cycle: vec![interface_info],
-            })?
-            .downcast()
-            .map_err(|_| {
-                InjectError::InternalError(format!(
-                    "the provider registry for {:?} is an invalid type",
-                    interface_info.name()
-                ))
-            })
-            .map(|registry| *registry)
-    }
-
-    pub fn reclaim<I>(
-        &mut self,
-        provider_registry: ProviderRegistry<I>,
-    ) -> InjectResult<()>
-    where
-        I: ?Sized + Interface,
-    {
-        // Get the provider registry's slot
-        let interface_info = ServiceInfo::of::<I>();
-        let slot = self
-            .provider_registries
-            .get_mut(&interface_info)
-            .ok_or_else(|| {
-                InjectError::InternalError(format!(
-                    "activated providers for {} are no longer registered",
-                    interface_info.name()
-                ))
-            })?;
-
-        // Put the provider registry into the slot
-        let replaced = slot.replace(Box::new(provider_registry));
-        if let Some(replaced) = replaced {
-            slot.replace(replaced);
-            return Err(InjectError::InternalError(format!(
-                "slot for the provider registry for {:?} has already been reclaimed",
-                interface_info.name()
-            )));
-        }
-
-        Ok(())
-    }
-
-    pub fn take_providers_for<I>(
-        &mut self,
-        service_info: ServiceInfo,
-    ) -> InjectResult<Vec<Box<dyn Provider<Interface = I>>>>
-    where
-        I: ?Sized + Interface,
-    {
-        // Get provider registry
-        let interface_info = ServiceInfo::of::<I>();
-        let provider_registry = self
-            .provider_registries
-            .get_mut(&interface_info)
-            .ok_or_else(|| InjectError::MissingProvider { service_info })?;
-
-        // Downcast provider list
-        let provider_registry: &mut ProviderRegistry<I> = provider_registry
-            .inner_mut()
-            .ok_or_else(|| InjectError::CycleDetected {
-                service_info,
-                cycle: vec![service_info],
-            })?
-            .downcast_mut()
-            .ok_or_else(|| {
-                InjectError::InternalError(format!(
-                    "provider registry for interface {:?} is the wrong type",
-                    interface_info.name()
-                ))
-            })?;
-
-        // Get providers
-        provider_registry.take_providers_for(service_info)
-    }
-
-    pub fn reclaim_providers_for<I>(
-        &mut self,
-        service_info: ServiceInfo,
-        providers: Vec<Box<dyn Provider<Interface = I>>>,
-    ) -> InjectResult<()>
-    where
-        I: ?Sized + Interface,
-    {
-        // Get the provider registry
-        let interface_info = ServiceInfo::of::<I>();
-        let slot = self
-            .provider_registries
-            .get_mut(&interface_info)
-            .ok_or_else(|| {
-                InjectError::InternalError(format!(
-                    "activated provider for {} is no longer registered",
-                    interface_info.name()
-                ))
-            })?;
-        let provider_registry = slot.inner_mut().ok_or_else(|| {
-            InjectError::InternalError(format!(
-                "activated provider for {} is in use",
-                interface_info.name()
-            ))
-        })?;
-
-        // Downcast the provider registry
-        let provider_registry: &mut ProviderRegistry<_> =
-            provider_registry.downcast_mut().ok_or_else(|| {
-                InjectError::InternalError(format!(
-                    "provider registry for interface {:?} is the wrong type",
-                    interface_info.name()
-                ))
-            })?;
-
-        // Reclaim the providers
-        provider_registry.reclaim_providers_for(service_info, providers)
+        let registry = self.registries.get(&interface_info).cloned();
+        #[cfg(feature = "arc")]
+        let registry = registry.map(|registry| {
+            registry.downcast_arc::<ProviderRegistry<I>>().unwrap()
+        });
+        #[cfg(feature = "rc")]
+        let registry = registry.map(|registry| {
+            registry.downcast_rc::<ProviderRegistry<I>>().unwrap()
+        });
+        registry.unwrap_or_default()
     }
 }

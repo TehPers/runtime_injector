@@ -1,4 +1,4 @@
-use crate::{RequestParameter, ServiceInfo};
+use crate::{InjectError, InjectResult, RequestParameter, ServiceInfo};
 use std::{
     collections::HashMap,
     fmt::{Debug, Formatter},
@@ -13,7 +13,6 @@ pub struct RequestInfo {
 
 impl RequestInfo {
     /// Creates a new, empty instance of [`RequestInfo`].
-    #[must_use]
     pub fn new() -> Self {
         RequestInfo {
             service_path: Vec::new(),
@@ -22,12 +21,26 @@ impl RequestInfo {
     }
 
     /// Creates a new child instance of [`RequestInfo`] with the given service
-    /// appended to the end of the request path.
-    #[must_use]
-    pub fn with_request(&self, service: ServiceInfo) -> Self {
+    /// appended to the end of the request path. If a cycle is detected, an
+    /// error is returned instead.
+    pub fn with_request(
+        &self,
+        service_info: ServiceInfo,
+    ) -> InjectResult<Self> {
+        // Check for cycles
+        if self.service_path.contains(&service_info) {
+            let mut cycle = self.service_path.clone();
+            cycle.push(service_info);
+            return Err(InjectError::CycleDetected {
+                service_info,
+                cycle,
+            });
+        }
+
+        // Create child request info
         let mut child = self.clone();
-        child.service_path.push(service);
-        child
+        child.service_path.push(service_info);
+        Ok(child)
     }
 
     /// Gets the current request path. This can be used to configure a service
@@ -66,6 +79,7 @@ impl RequestInfo {
     /// let foo: Svc<Foo> = injector.get().unwrap();
     /// let bar: Svc<Bar> = injector.get().unwrap();
     /// let baz: Svc<Baz> = injector.get().unwrap();
+    // rustfmt doesn't properly format `x.0.0` in doc comments
     #[rustfmt::skip]
     /// assert_eq!(1, foo.0.0);
     /// assert_eq!(2, bar.0.0);

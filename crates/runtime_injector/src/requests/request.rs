@@ -1,5 +1,5 @@
 use crate::{
-    FromProvider, InjectError, InjectResult, Injector, RequestInfo,
+    FromProvider, InjectError, InjectResult, Injector, Providers, RequestInfo,
     ServiceInfo, Services, Svc,
 };
 
@@ -132,11 +132,19 @@ impl<S: ?Sized + FromProvider> Request for Box<S> {
     }
 }
 
+/// Requests all the providers of a service.
+impl<S: ?Sized + FromProvider> Request for Providers<S> {
+    fn request(injector: &Injector, _info: &RequestInfo) -> InjectResult<Self> {
+        Ok(injector.get_providers())
+    }
+}
+
 /// Lazily requests all the implementations of a service.
 impl<S: ?Sized + FromProvider> Request for Services<S> {
     #[inline]
     fn request(injector: &Injector, info: &RequestInfo) -> InjectResult<Self> {
-        injector.get_all(info)
+        let providers: Providers<S> = injector.get_with(info)?;
+        Ok(Services::new(injector.clone(), info.clone(), providers))
     }
 }
 

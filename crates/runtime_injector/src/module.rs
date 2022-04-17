@@ -1,4 +1,4 @@
-use crate::{InterfaceRegistryBuilder, Provider, RequestParameter};
+use crate::{InterfaceRegistryBuilder, Provider, RequestParameter, Svc};
 use std::collections::HashMap;
 
 /// A collection of providers that can be added all at once to an
@@ -10,7 +10,7 @@ use std::collections::HashMap;
 /// [`define_module!`].
 #[derive(Default)]
 pub struct Module {
-    pub(crate) registry_builder: InterfaceRegistryBuilder,
+    pub(crate) registry: InterfaceRegistryBuilder,
     pub(crate) parameters: HashMap<String, Box<dyn RequestParameter>>,
 }
 
@@ -23,9 +23,9 @@ impl Module {
         P: Provider,
     {
         // Should never panic
-        self.registry_builder
+        self.registry
             .ensure_providers_mut()
-            .add_provider_for(provider.result(), Box::new(provider));
+            .add_provider_for(provider.result(), Svc::new(provider));
     }
 
     /// Sets the of a value request parameter for requests made by the injector
