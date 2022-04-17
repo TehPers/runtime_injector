@@ -87,14 +87,6 @@ where
     type Item = &'a dyn Provider<Interface = S::Interface>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        self.inner.find_map(|provider| {
-            // Skip providers that don't match the filter
-            if !S::should_provide(provider) {
-                return None;
-            }
-
-            // Return the provider
-            Some(provider)
-        })
+        self.inner.find(|&provider| S::should_provide(provider))
     }
 }

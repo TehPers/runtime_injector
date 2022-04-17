@@ -226,6 +226,7 @@
 #![warn(missing_docs)]
 #![allow(
     clippy::module_name_repetitions,
+    clippy::module_inception,
     clippy::missing_errors_doc,
     clippy::doc_markdown,
     clippy::needless_doctest_main,

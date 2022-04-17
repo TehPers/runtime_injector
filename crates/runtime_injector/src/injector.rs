@@ -237,6 +237,7 @@ impl Injector {
     }
 
     #[doc(hidden)]
+    #[must_use]
     pub fn get_providers<S: ?Sized + FromProvider>(&self) -> Providers<S> {
         Providers::new(self.interface_registry.get_providers())
     }

@@ -64,7 +64,7 @@ where
 {
     fn default() -> Self {
         Self {
-            providers: Default::default(),
+            providers: HashMap::default(),
         }
     }
 }

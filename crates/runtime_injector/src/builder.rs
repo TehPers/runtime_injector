@@ -22,7 +22,7 @@ impl InjectorBuilder {
     where
         P: Provider,
     {
-        self.add_provider(Svc::new(provider))
+        self.add_provider(Svc::new(provider));
     }
 
     /// Adds a provider to the injector.
@@ -120,11 +120,7 @@ impl InterfaceRegistryBuilder {
     {
         self.registries
             .entry(ServiceInfo::of::<I>())
-            .or_insert_with(|| {
-                (Box::new(ProviderRegistry::<I>::default())
-                    as Box<dyn ProviderRegistryType>)
-                    .into()
-            })
+            .or_insert_with(|| Box::new(ProviderRegistry::<I>::default()))
             .downcast_mut()
             .unwrap()
     }
@@ -163,7 +159,7 @@ impl InterfaceRegistryBuilder {
                     entry.into_mut().merge(other_providers).unwrap();
                 }
                 Entry::Vacant(entry) => {
-                    entry.insert(other_providers.into());
+                    entry.insert(other_providers);
                 }
             }
         }

@@ -13,6 +13,7 @@ pub struct RequestInfo {
 
 impl RequestInfo {
     /// Creates a new, empty instance of [`RequestInfo`].
+    #[must_use]
     pub fn new() -> Self {
         RequestInfo {
             service_path: Vec::new(),

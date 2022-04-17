@@ -30,7 +30,10 @@ where
     pub fn new(func: F) -> Self {
         SingletonProvider {
             factory: func,
-            result: Default::default(),
+            #[cfg(feature = "arc")]
+            result: std::sync::RwLock::default(),
+            #[cfg(feature = "rc")]
+            result: std::cell::RefCell::default(),
             marker: PhantomData,
         }
     }
