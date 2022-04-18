@@ -152,14 +152,12 @@ mod tests {
         assert_eq!(
             Some(&"bar".to_string()),
             info.get_parameter("foo")
-                .map(|p| p.downcast_ref::<String>())
-                .flatten()
+                .and_then(<dyn RequestParameter>::downcast_ref)
         );
         assert_eq!(
             Some(Box::new("bar".to_string())),
             info.remove_parameter("foo")
-                .map(|p| p.downcast::<String>().ok())
-                .flatten()
+                .and_then(|p| p.downcast::<String>().ok())
         );
         assert!(info.get_parameter("foo").is_none());
     }

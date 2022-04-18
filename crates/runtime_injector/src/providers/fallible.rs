@@ -154,7 +154,7 @@ mod tests {
         builder.provide(constant(true));
 
         let injector = builder.build();
-        let _: Svc<Foo> = injector.get().unwrap();
+        let _foo: Svc<Foo> = injector.get().unwrap();
     }
 
     /// A value is not returned if the service factory fails.

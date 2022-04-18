@@ -97,7 +97,8 @@ where
 }
 
 /// An iterator over the provided services of the given type. Each service is
-/// activated on demand.
+/// activated on demand. Because activation of a service may fail, this
+/// iterator returns [`InjectResult<S>`].
 ///
 /// ```
 /// use runtime_injector::{constant, Injector, IntoTransient, Services, Svc};
@@ -264,7 +265,7 @@ mod tests {
         assert!(!initialized.load(Ordering::Relaxed));
 
         // Check that it is initialized after iteration
-        let _: Svc<Counter> = services.iter().next().unwrap().unwrap();
+        let _next = services.iter().next().unwrap().unwrap();
         assert!(initialized.load(Ordering::Relaxed));
     }
 }
