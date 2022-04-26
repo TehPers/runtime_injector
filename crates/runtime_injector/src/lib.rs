@@ -55,7 +55,7 @@
 //!
 //! Lifetimes of services created by the [`Injector`] are controlled by the
 //! [`Provider`] used to construct those lifetimes. Currently, there are three
-//! built-in service provider types:
+//! primary built-in service provider types:
 //!
 //! - **[Transient](crate::TransientProvider):** A service is created each time
 //!   it is requested. This will never return the same instance of a service

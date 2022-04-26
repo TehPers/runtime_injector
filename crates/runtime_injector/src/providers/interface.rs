@@ -4,7 +4,7 @@ use crate::{
 use std::marker::PhantomData;
 
 /// Provides a service as an implementation of an interface. See
-/// [`TypedProvider::with_interface()`] for more information.
+/// [`WithInterface::with_interface()`].
 pub struct InterfaceProvider<I, P>
 where
     P: TypedProvider,
@@ -52,7 +52,7 @@ pub trait WithInterface: TypedProvider {
     /// assigned to the [`dyn Service`] interface. Any services assigned to the
     /// [`dyn Service`] interface can be requested directly by their concrete
     /// type. Other services cannot be requested by their concrete types once
-    /// they has been assigned another interface.
+    /// they have been assigned another interface.
     ///
     /// [`dyn Service`]: crate::Service
     ///
@@ -74,15 +74,16 @@ pub trait WithInterface: TypedProvider {
     /// struct Foo;
     /// impl Fooable for Foo {}
     ///
+    /// // First, register Foo with the interface `dyn Fooable`
     /// let mut builder = Injector::builder();
     /// builder.provide(Foo::default.singleton().with_interface::<dyn Fooable>());
     ///
-    /// // Foo can now be requested through its interface of `dyn Fooable`.
+    /// // Foo can now be requested through its interface
     /// let injector = builder.build();
     /// let fooable: Svc<dyn Fooable> = injector.get().unwrap();
     /// fooable.bar();
     ///
-    /// // It can't be requested through its original type
+    /// // It can't be requested through its original type anymore
     /// assert!(injector.get::<Svc<Foo>>().is_err());
     /// ```
     fn with_interface<I: ?Sized + InterfaceFor<Self::Result>>(

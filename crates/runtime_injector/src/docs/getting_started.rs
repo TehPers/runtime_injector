@@ -47,9 +47,6 @@
 //! abstraction for our output so we can check it it in our unit tests.
 //!
 //! ```
-//! #[cfg(test)]
-//! # mod _ignored0 {}
-//! use std::fmt::Write;
 //! use std::{env::args, io::stdin};
 //!
 //! trait OutputWriter {
@@ -59,19 +56,7 @@
 //! struct ConsoleWriter;
 //! impl OutputWriter for ConsoleWriter {
 //!     fn write_output(&mut self, message: &str) {
-//!         println!("{}", message);
-//!     }
-//! }
-//!
-//! // Our mock writer so we can observe the output in tests
-//! #[cfg(test)]
-//! # mod _ignored1 {}
-//! struct MockWriter(pub String);
-//! #[cfg(test)]
-//! # mod _ignored2 {}
-//! impl OutputWriter for MockWriter {
-//!     fn write_output(&mut self, message: &str) {
-//!         writeln!(self.0, "{}", message).unwrap();
+//!         println!("{message}");
 //!     }
 //! }
 //!
@@ -85,18 +70,6 @@
 //!         let mut input = String::new();
 //!         stdin().read_line(&mut input).unwrap();
 //!         input
-//!     }
-//! }
-//!
-//! // Our mock reader for testing our application!
-//! #[cfg(test)]
-//! # mod _ignored3 {}
-//! struct MockReader(pub Option<String>);
-//! #[cfg(test)]
-//! # mod _ignored4 {}
-//! impl InputReader for MockReader {
-//!     fn read_line(&mut self) -> String {
-//!         self.0.take().unwrap()
 //!     }
 //! }
 //!
@@ -131,13 +104,30 @@
 //!
 //! // Verify our program works like we want it to
 //! #[cfg(test)]
-//! # mod _ignored5 {}
+//! # mod _ignored_tests {}
 //! mod tests {
 //!     use super::*;
+//!     use std::fmt::Write;
+//!
+//!     // Our mock writer so we can observe the output in tests
+//!     struct MockWriter(pub String);
+//!     impl OutputWriter for MockWriter {
+//!         fn write_output(&mut self, message: &str) {
+//!             writeln!(self.0, "{message}").unwrap();
+//!         }
+//!     }
+//!
+//!     // Our mock reader for ensuring anything that depends on it works
+//!     struct MockReader(pub Option<String>);
+//!     impl InputReader for MockReader {
+//!         fn read_line(&mut self) -> String {
+//!             self.0.take().unwrap()
+//!         }
+//!     }
 //!
 //!     // Let's make sure we're getting the correct name from the user
 //!     #[test]
-//!     # fn _ignored() {}
+//!     # fn _ignored_test() {}
 //!     # pub
 //!     fn name_is_correct() {
 //!         // Setup our mocked reader and writer
@@ -179,59 +169,82 @@
 //! ```
 //! use runtime_injector::{
 //!     interface, Arg, Injector, InjectorBuilder, IntoSingleton, Service, Svc,
-//!     TypedProvider, WithArg,
+//!     TypedProvider, WithArg, WithInterface,
 //! };
+//! use std::io::stdin;
 //!
-//! // Let's leave out the functions from our traits, we don't really need them
-//! // for this example. We need our trait to be a subtrait of `Service` so
-//! // that we can use type erasure in our container later on. Also, if our
-//! // services need to be thread-safe and we're using the "arc" feature for
-//! // runtime_injector, then `Service` will automatically require `Send` +
-//! // `Sync` for us
-//! trait OutputWriter: Service {}
+//! // We need our trait to be a subtrait of `Service` so that we can use type
+//! // erasure in our container later on. Also, if our services need to be
+//! // thread-safe and we're using the "arc" feature for `runtime_injector`,
+//! // then `Service` will automatically make `Send` + `Sync` required for us.
+//! trait OutputWriter: Service {
+//!     fn write_output(&mut self, message: &str);
+//! }
 //!
 //! // We still want to be able to write to the console, but we need our output
 //! // formatter to make sure we correctly format our output
 //! struct ConsoleWriter(Svc<dyn OutputFormatter>);
-//! impl OutputWriter for ConsoleWriter {}
+//! impl OutputWriter for ConsoleWriter {
+//!     fn write_output(&mut self, message: &str) {
+//!         let message = self.0.fmt_message(message);
+//!         println!("{message}");
+//!     }
+//! }
 //!
-//! // We also want to be able to send greetings across HTTPS
-//! struct HttpsWriter(Svc<dyn OutputFormatter>);
-//! impl OutputWriter for HttpsWriter {}
+//! // We also want to be able to send greetings via HTTP to a web service
+//! struct HttpWriter(Svc<dyn OutputFormatter>);
+//! impl OutputWriter for HttpWriter {
+//!     fn write_output(&mut self, message: &str) {
+//!         let _message = self.0.fmt_message(message);
+//!         // ...
+//!     }
+//! }
 //!
 //! // Finally, we need to support TCP as well
 //! struct TcpWriter(Svc<dyn OutputFormatter>);
-//! impl OutputWriter for TcpWriter {}
-//!
-//! // Also, we need to be able to mock this for testing
-//! #[cfg(test)]
-//! struct MockWriter(pub Arg<String>, Svc<dyn OutputFormatter>);
-//! #[cfg(test)]
-//! impl OutputWriter for MockWriter {}
+//! impl OutputWriter for TcpWriter {
+//!     fn write_output(&mut self, message: &str) {
+//!         let _message = self.0.fmt_message(message);
+//!         // ...
+//!     }
+//! }
 //!
 //! // We also need a way to format the messages
-//! trait OutputFormatter: Service {}
+//! trait OutputFormatter: Service {
+//!     fn fmt_message(&self, message: &str) -> String;
+//! }
 //!
 //! // Our users want to be able to format them with custom formats!
 //! struct UserFormatter(pub Arg<String>);
-//! impl OutputFormatter for UserFormatter {}
+//! impl OutputFormatter for UserFormatter {
+//!     fn fmt_message(&self, message: &str) -> String {
+//!         format!("{message} formatted with {fmt}", fmt = self.0)
+//!     }
+//! }
 //!
 //! // Not all users want to use a custom format though, so we need a default
 //! #[derive(Default)]
 //! struct DefaultFormatter;
-//! impl OutputFormatter for DefaultFormatter {}
+//! impl OutputFormatter for DefaultFormatter {
+//!     fn fmt_message(&self, message: &str) -> String {
+//!         message.into()
+//!     }
+//! }
 //!
 //! // Now let's bring over our reader implementations
-//! trait InputReader: Service {}
+//! trait InputReader: Service {
+//!     fn read_line(&mut self) -> String;
+//! }
 //!
 //! #[derive(Default)]
 //! struct ConsoleReader;
-//! impl InputReader for ConsoleReader {}
-//!
-//! #[cfg(test)]
-//! struct MockReader(pub Arg<Option<String>>);
-//! #[cfg(test)]
-//! impl InputReader for MockReader {}
+//! impl InputReader for ConsoleReader {
+//!     fn read_line(&mut self) -> String {
+//!         let mut input = String::new();
+//!         stdin().read_line(&mut input).unwrap();
+//!         input
+//!     }
+//! }
 //!
 //! // Let's create an enum to help us configure our output writer too
 //! #[derive(Clone, Copy, PartialEq, Eq, Debug, Hash)]
@@ -279,11 +292,13 @@
 //!         builder.provide(
 //!             UserFormatter
 //!                 .singleton()
+//!                 // We want to also pass the user's custom format to our
+//!                 // service
+//!                 .with_arg(user_format)
+//!                 // We want our formatter to be requested through its
+//!                 // interface
 //!                 .with_interface::<dyn OutputFormatter>(),
 //!         );
-//!
-//!         // We want to also pass the user's custom format to our service
-//!         builder.with_arg::<UserFormatter, _>(user_format);
 //!     } else {
 //!         // The user didn't give us a custom format, so we'll use the
 //!         // default output formatter instead
@@ -306,7 +321,7 @@
 //!         }
 //!         OutputType::Https => {
 //!             builder.provide(
-//!                 HttpsWriter
+//!                 HttpWriter
 //!                     .singleton()
 //!                     .with_interface::<dyn OutputWriter>(),
 //!             );
@@ -323,6 +338,9 @@
 //! }
 //!
 //! fn main() {
+//!     # // Let's actually verify the test passes
+//!     # tests::console_output_is_formatted_before_being_written();
+//!     #
 //!     // We want the user to be able to configure the application here.
 //!     // Normally, we'd use something like clap for this, but for the sake of
 //!     // the example, we'll just hardcode the config
@@ -343,11 +361,49 @@
 //!
 //! // Let's not forget about unit tests!
 //! #[cfg(test)]
+//! # mod _ignored_tests {}
 //! mod tests {
 //!     use super::*;
 //!     use runtime_injector::{define_module, Injector, IntoSingleton, Svc};
+#![cfg_attr(feature = "arc", doc = "     use std::sync::Mutex;")]
+#![cfg_attr(feature = "rc", doc = "     use std::cell::RefCell;")]
+//!
+//!     // We may need to mock the output writer for testing to make sure we
+//!     // are writing the correct message
+#![cfg_attr(
+    feature = "arc",
+    doc = "     struct MockWriter(Svc<Mutex<String>>);"
+)]
+#![cfg_attr(
+    feature = "rc",
+    doc = "     struct MockWriter(Svc<RefCell<String>>);"
+)]
+//!     impl OutputWriter for MockWriter {
+//!         fn write_output(&mut self, message: &str) {
+//!             // We'll just track the message that was written
+#![cfg_attr(
+    feature = "arc",
+    doc = "             let mut inner = self.0.lock().unwrap();"
+)]
+#![cfg_attr(
+    feature = "rc",
+    doc = "             let mut inner = self.0.borrow_mut().unwrap();"
+)]
+//!             *inner = message.to_string();
+//!         }
+//!     }
+//!
+//!     struct MockReader(pub Arg<Option<String>>);
+//!     impl InputReader for MockReader {
+//!         fn read_line(&mut self) -> String {
+//!              // We'll just return the message that was given to us
+//!              self.0.take().unwrap()
+//!         }
+//!     }
 //!
 //!     #[test]
+//!     # fn _ignored_test() {}
+//!     # pub
 //!     fn console_output_is_formatted_before_being_written() {
 //!         // Let's make a custom module for testing just the console writer
 //!         let module = define_module! {

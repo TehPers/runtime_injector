@@ -84,10 +84,10 @@ impl Injector {
     /// Performs a request for a service. There are several types of requests
     /// that can be made to the service container by default:
     ///
-    /// - [`Svc<T>`](crate::Svc): Requests a service pointer to the given
-    ///   interface and creates an instance of the service if needed. If
-    ///   multiple service providers are registered for that interface, then
-    ///   returns an error instead.
+    /// - [`Svc<T>`]: Requests a service pointer to the given interface and
+    ///   creates an instance of the service if needed. If multiple service
+    ///   providers are registered for that interface, then returns an error
+    ///   instead.
     /// - [`Box<T>`]: Requests an owned service pointer to the given interface
     ///   and creates an instance of the service. Not all service providers can
     ///   provide owned versions of their services, so this may fail for some
@@ -105,7 +105,7 @@ impl Injector {
     ///   can't provide owned pointers, then returns an error instead.
     /// - [`Services<T>`]: Requests all the implementations of an interface.
     ///   This will lazily create the services on demand. See the
-    ///   [documentation for `Services<T>`](Services<T>) for more details.
+    ///   [documentation for `Services<T>`][`Services<T>`] for more details.
     /// - [`Injector`]: Requests a clone of the injector. While it doesn't make
     ///   much sense to request this directly from the injector itself, this
     ///   allows the injector to be requested as a dependency inside of
@@ -115,6 +115,7 @@ impl Injector {
     /// - [`Factory<R>`]: Lazily performs requests on demand.
     ///
     /// [`Factory<R>`]: crate::Factory<R>
+    /// [`Services<T>`]: crate::Services<T>
     ///
     /// See the [documentation for `Request`](Request) for more information on
     /// what can be requested. Custom request types can also be created by
