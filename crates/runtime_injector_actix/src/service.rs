@@ -86,7 +86,7 @@ where
             None => {
                 return err(ErrorInternalServerError(
                     "no injector is present in app_data",
-                ))
+                ));
             }
         };
 

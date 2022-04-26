@@ -139,11 +139,7 @@ mod tests {
 
     struct Foo;
     fn make_foo(succeed: Svc<bool>) -> Result<Foo, FooError> {
-        if *succeed {
-            Ok(Foo)
-        } else {
-            Err(FooError)
-        }
+        if *succeed { Ok(Foo) } else { Err(FooError) }
     }
 
     /// A value is returned if the service factory succeeds.

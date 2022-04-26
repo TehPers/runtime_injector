@@ -261,6 +261,6 @@ fn request_info_has_correct_path() {
     assert_eq!(&[ServiceInfo::of::<Foo>()], foo.1.service_path());
     assert_eq!(
         &[ServiceInfo::of::<Foo>(), ServiceInfo::of::<Bar>()],
-        foo.0 .0.service_path()
+        foo.0.0.service_path()
     );
 }

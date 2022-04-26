@@ -1,35 +1,23 @@
 use crate::{
-    InjectError, InjectResult, Injector, InjectorBuilder, Module, Request,
-    RequestInfo, RequestParameter, Service, ServiceInfo,
+    InjectError, InjectResult, Injector, Request, RequestInfo, Service,
+    ServiceInfo, TypedProvider,
 };
 use std::{
     error::Error,
-    fmt::{Debug, Display, Formatter},
+    fmt::{Display, Formatter},
     ops::{Deref, DerefMut},
 };
 
 /// Allows custom pre-defined values to be passed as arguments to services.
 ///
-/// ## Example
-///
-/// ```
-/// use runtime_injector::{Arg, Injector, IntoTransient, WithArg};
-///
-/// struct Foo(Arg<i32>);
-///
-/// let mut builder = Injector::builder();
-/// builder.provide(Foo.transient());
-/// builder.with_arg::<Foo, i32>(12);
-///
-/// let injector = builder.build();
-/// let foo: Box<Foo> = injector.get().unwrap();
-/// assert_eq!(12, *foo.0);
-/// ```
-#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug, Hash)]
+/// See [WithArg::with_arg()].
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug, Hash, Default)]
 pub struct Arg<T: Service + Clone>(T);
 
 impl<T: Service + Clone> Arg<T> {
-    pub(crate) fn param_name(target: ServiceInfo) -> String {
+    /// Gets the parameter name of an [`Arg<T>`] requested by a particular
+    /// service.
+    pub fn param_name(target: ServiceInfo) -> String {
         format!(
             "runtime_injector::Arg[target={:?},type={:?}]",
             target.id(),
@@ -122,57 +110,126 @@ impl Display for ArgRequestError {
     }
 }
 
+/// A service provider that attaches an argument to a service. This can be used
+/// to pass custom values to service factories. See [`WithArg::with_arg()`].
+pub struct ArgProvider<P, T>
+where
+    P: TypedProvider,
+    P::Result: Sized,
+    T: Service + Clone,
+{
+    inner: P,
+    arg: T,
+}
+
+impl<P, T> TypedProvider for ArgProvider<P, T>
+where
+    P: TypedProvider,
+    P::Result: Sized,
+    T: Service + Clone,
+{
+    type Interface = <P as TypedProvider>::Interface;
+    type Result = P::Result;
+
+    fn provide_typed(
+        &self,
+        injector: &crate::Injector,
+        request_info: &crate::RequestInfo,
+    ) -> crate::InjectResult<crate::Svc<Self::Result>> {
+        let mut request_info = request_info.clone();
+        let _ = request_info.insert_parameter(
+            &Arg::<T>::param_name(ServiceInfo::of::<Self::Result>()),
+            self.arg.clone(),
+        );
+        self.inner.provide_typed(injector, &request_info)
+    }
+
+    fn provide_owned_typed(
+        &self,
+        injector: &crate::Injector,
+        request_info: &crate::RequestInfo,
+    ) -> crate::InjectResult<Box<Self::Result>> {
+        let mut request_info = request_info.clone();
+        let _ = request_info.insert_parameter(
+            &Arg::<T>::param_name(ServiceInfo::of::<Self::Result>()),
+            self.arg.clone(),
+        );
+        self.inner.provide_owned_typed(injector, &request_info)
+    }
+}
+
 /// Allows defining pre-defined arguments to services.
-pub trait WithArg {
-    /// Adds an argument for a service. See the docs for [`Arg<T>`].
-    fn with_arg<S: Service, T: Service + Clone>(
-        &mut self,
-        value: T,
-    ) -> Option<Box<dyn RequestParameter>>;
+pub trait WithArg: TypedProvider
+where
+    Self::Result: Sized,
+{
+    /// Adds an argument for a service.
+    ///
+    /// ## Example
+    ///
+    /// ```
+    /// use runtime_injector::{Arg, Injector, IntoSingleton, Svc, WithArg};
+    ///
+    /// struct DatabaseConnection {
+    ///     connection_string: String,
+    /// }
+    ///
+    /// impl DatabaseConnection {
+    ///     fn new(connection_string: Arg<String>) -> Self {
+    ///         Self {
+    ///             connection_string: Arg::into_inner(connection_string),
+    ///         }
+    ///     }
+    /// }
+    ///
+    /// let mut builder = Injector::builder();
+    /// builder.provide(
+    ///     DatabaseConnection::new
+    ///         .singleton()
+    ///         .with_arg("<connection string>".to_string()),
+    /// );
+    ///
+    /// let injector = builder.build();
+    /// let db: Svc<DatabaseConnection> = injector.get().unwrap();
+    /// assert_eq!("<connection string>", db.connection_string);
+    /// ```
+    fn with_arg<T>(self, arg: T) -> ArgProvider<Self, T>
+    where
+        T: Service + Clone;
 }
 
-impl WithArg for RequestInfo {
-    fn with_arg<S: Service, T: Service + Clone>(
-        &mut self,
-        value: T,
-    ) -> Option<Box<dyn RequestParameter>> {
-        self.insert_parameter(
-            &Arg::<T>::param_name(ServiceInfo::of::<S>()),
-            value,
-        )
-    }
-}
-
-impl WithArg for InjectorBuilder {
-    fn with_arg<S: Service, T: Service + Clone>(
-        &mut self,
-        value: T,
-    ) -> Option<Box<dyn RequestParameter>> {
-        self.root_info_mut().with_arg::<S, T>(value)
-    }
-}
-
-impl WithArg for Module {
-    fn with_arg<S: Service, T: Service + Clone>(
-        &mut self,
-        value: T,
-    ) -> Option<Box<dyn RequestParameter>> {
-        self.insert_parameter(
-            &Arg::<T>::param_name(ServiceInfo::of::<S>()),
-            value,
-        )
+impl<P> WithArg for P
+where
+    P: TypedProvider,
+    P::Result: Sized,
+{
+    fn with_arg<T>(self, arg: T) -> ArgProvider<Self, T>
+    where
+        T: Service + Clone,
+    {
+        ArgProvider { inner: self, arg }
     }
 }
 
 #[cfg(test)]
 mod tests {
     use crate::{
-        define_module, Arg, ArgRequestError, InjectError, Injector,
-        IntoSingleton, ServiceInfo, Svc,
+        define_module, interface, Arg, ArgRequestError, InjectError, Injector,
+        IntoSingleton, Service, ServiceInfo, Svc, WithArg, WithInterface,
     };
 
-    #[derive(Debug)]
+    #[derive(Debug, Default)]
     struct Foo(Arg<i32>);
+
+    trait Fooable: Service {
+        fn value(&self) -> i32;
+    }
+    interface!(Fooable);
+    impl Fooable for Foo {
+        fn value(&self) -> i32 {
+            self.0.0
+        }
+    }
 
     #[test]
     fn request_fails_if_missing_arg() {
@@ -230,17 +287,8 @@ mod tests {
 
     #[test]
     fn request_fails_if_arg_is_wrong_type() {
-        struct Foo(Arg<i32>);
-
-        let module = define_module! {
-            services = [Foo.singleton()],
-            arguments = {
-                Foo = [42u32],
-            },
-        };
-
         let mut builder = Injector::builder();
-        builder.add_module(module);
+        builder.provide(Foo.singleton().with_arg(42u32));
 
         let injector = builder.build();
         match injector.get::<Svc<Foo>>() {
@@ -263,20 +311,51 @@ mod tests {
 
     #[test]
     fn request_succeeds_if_arg_is_correct_type() {
-        struct Foo(Arg<i32>);
-
-        let module = define_module! {
-            services = [Foo.singleton()],
-            arguments = {
-                Foo = [42i32],
-            },
-        };
-
         let mut builder = Injector::builder();
-        builder.add_module(module);
+        builder.provide(Foo.singleton().with_arg(42i32));
 
         let injector = builder.build();
         let foo = injector.get::<Svc<Foo>>().unwrap();
-        assert_eq!(42, foo.0 .0);
+        assert_eq!(42, foo.value());
+    }
+
+    #[test]
+    fn request_succeeds_with_interface_provider() {
+        let mut builder = Injector::builder();
+        builder.provide(
+            Foo.singleton()
+                .with_arg(42i32)
+                .with_interface::<dyn Fooable>(),
+        );
+
+        let injector = builder.build();
+        let foo = injector.get::<Svc<dyn Fooable>>().unwrap();
+        assert_eq!(42, foo.value());
+    }
+
+    #[test]
+    fn request_succeeds_with_multiple_providers() {
+        let mut builder = Injector::builder();
+        builder.provide(Foo.singleton().with_arg(1i32));
+        builder.provide(Foo.singleton().with_arg(2i32));
+
+        let injector = builder.build();
+        let foos = injector.get::<Vec<Svc<Foo>>>().unwrap();
+        assert_eq!(2, foos.len());
+        assert!(foos.iter().any(|foo| foo.value() == 1));
+        assert!(foos.iter().any(|foo| foo.value() == 2));
+    }
+
+    #[test]
+    fn request_succeeds_with_multiple_args() {
+        struct Bar(Arg<i32>, Arg<&'static str>);
+
+        let mut builder = Injector::builder();
+        builder.provide(Bar.singleton().with_arg(1i32).with_arg("foo"));
+
+        let injector = builder.build();
+        let bar = injector.get::<Svc<Bar>>().unwrap();
+        assert_eq!(1, bar.0.0);
+        assert_eq!("foo", bar.1.0);
     }
 }

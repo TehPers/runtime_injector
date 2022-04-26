@@ -222,7 +222,7 @@ impl Display for InjectError {
                     dependency_info.name(),
                     service_info.name()
                 )
-            },
+            }
             InjectError::CycleDetected {
                 service_info,
                 cycle,
@@ -242,18 +242,18 @@ impl Display for InjectError {
                 service_info.name()
             ),
             InjectError::InvalidProvider { service_info } => {
-                write!(f, "the registered provider for {} returned the wrong type", service_info.name())
+                write!(
+                    f,
+                    "the registered provider for {} returned the wrong type",
+                    service_info.name()
+                )
             }
-            InjectError::MultipleProviders {
-                service_info,
-            } => write!(
+            InjectError::MultipleProviders { service_info } => write!(
                 f,
                 "the requested service {} has multiple providers registered (did you mean to request a Services<T> instead?)",
                 service_info.name(),
             ),
-            InjectError::OwnedNotSupported {
-                service_info
-            } => write!(
+            InjectError::OwnedNotSupported { service_info } => write!(
                 f,
                 "the registered provider can't provide an owned variant of {}",
                 service_info.name()
@@ -266,11 +266,18 @@ impl Display for InjectError {
                 )
             }
             InjectError::ActivationFailed { service_info, .. } => {
-                write!(f, "an error occurred during activation of {}", service_info.name())
-            },
+                write!(
+                    f,
+                    "an error occurred during activation of {}",
+                    service_info.name()
+                )
+            }
             InjectError::InternalError(message) => {
-                write!(f, "an unexpected error occurred (please report this to https://github.com/TehPers/runtime_injector/issues): {message}")
-            },
+                write!(
+                    f,
+                    "an unexpected error occurred (please report this to https://github.com/TehPers/runtime_injector/issues): {message}"
+                )
+            }
         }
     }
 }

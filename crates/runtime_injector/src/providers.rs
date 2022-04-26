@@ -1,3 +1,4 @@
+mod arg;
 mod conditional;
 mod constant;
 mod fallible;
@@ -7,6 +8,7 @@ mod providers;
 mod singleton;
 mod transient;
 
+pub use arg::*;
 pub use conditional::*;
 pub use constant::*;
 pub use fallible::*;

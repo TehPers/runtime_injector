@@ -1,4 +1,6 @@
-use crate::{InjectResult, Injector, Request, RequestInfo};
+use crate::{
+    Arg, InjectResult, Injector, Request, RequestInfo, Service, ServiceInfo,
+};
 use std::marker::PhantomData;
 
 /// Lazy request factory allowing requests to be made outside of service
@@ -49,7 +51,10 @@ impl<R: Request> Clone for Factory<R> {
     }
 }
 
-impl<R: Request> Factory<R> {
+impl<R> Factory<R>
+where
+    R: Request,
+{
     /// Performs the factory's inner request.
     pub fn get(&self) -> InjectResult<R> {
         R::request(&self.injector, &self.request_info)
@@ -65,11 +70,17 @@ impl<R: Request> Factory<R> {
     /// Mutably gets this factory's inner [`RequestInfo`]. This request info is
     /// used by all requests the factory makes.
     ///
-    /// Modifying this request info affects future requests the factory makes,
-    /// meaning additional arguments can be added to requests prior to them
-    /// being executed. Since the factory can be cloned, requests can be
-    /// specialized by first cloning the factory, then modifying the
-    /// [`RequestInfo`] on the clone and using it to make the request instead.
+    /// Modifying this request info affects future requests the factory makes.
+    /// Since the factory can be cloned, requests can be specialized by first
+    /// cloning the factory, then modifying the [`RequestInfo`] on the clone
+    /// and using it to make the request instead.
+    #[must_use]
+    pub fn request_info_mut(&mut self) -> &mut RequestInfo {
+        &mut self.request_info
+    }
+
+    /// Creates a new [`Factory`] that injects an [`Arg<T>`] for a particular
+    /// service.
     ///
     /// ## Example
     ///
@@ -81,30 +92,48 @@ impl<R: Request> Factory<R> {
     ///
     /// struct Foo(Arg<i32>);
     ///
-    /// struct Bar(Factory<Box<Foo>>);
-    /// impl Bar {
+    /// struct FooFactory {
+    ///     factory: Factory<Box<Foo>>,
+    /// }
+    ///
+    /// impl FooFactory {
+    ///     fn new(factory: Factory<Box<Foo>>) -> Self {
+    ///         FooFactory { factory }
+    ///     }
+    ///
     ///     fn get_foo(&self, arg: i32) -> InjectResult<Box<Foo>> {
-    ///         let mut factory = self.0.clone();
-    ///         factory.request_info_mut().with_arg::<Foo, i32>(arg);
-    ///         factory.get()
+    ///         self.factory.with_arg::<Foo, _>(arg).get()
     ///     }
     /// }
     ///
     /// let mut builder = Injector::builder();
     /// builder.provide(Foo.transient());
-    /// builder.provide(Bar.singleton());
+    /// builder.provide(FooFactory::new.singleton());
     ///
     /// let injector = builder.build();
-    /// let bar: Svc<Bar> = injector.get().unwrap();
+    /// let bar: Svc<FooFactory> = injector.get().unwrap();
     /// let foo1 = bar.get_foo(1).unwrap();
     /// let foo2 = bar.get_foo(2).unwrap();
     ///
     /// assert_eq!(1, *foo1.0);
     /// assert_eq!(2, *foo2.0);
     /// ```
-    #[must_use]
-    pub fn request_info_mut(&mut self) -> &mut RequestInfo {
-        &mut self.request_info
+    pub fn with_arg<S, T>(&self, value: T) -> Factory<R>
+    where
+        S: Service,
+        T: Service + Clone,
+    {
+        let mut request_info = self.request_info.clone();
+        let _ = request_info.insert_parameter(
+            &Arg::<T>::param_name(ServiceInfo::of::<S>()),
+            value,
+        );
+
+        Factory {
+            injector: self.injector.clone(),
+            request_info,
+            marker: PhantomData,
+        }
     }
 }
 

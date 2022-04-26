@@ -55,7 +55,7 @@ impl Module {
 /// ```
 /// use runtime_injector::{
 ///     define_module, interface, Arg, Injector, IntoSingleton, IntoTransient,
-///     Service, Svc,
+///     Service, Svc, WithArg,
 /// };
 ///
 /// struct Foo(Arg<i32>);
@@ -75,12 +75,9 @@ impl Module {
 ///     ],
 ///     interfaces = {
 ///         dyn Fooable = [
-///             Foo.singleton(),
+///             Foo.singleton().with_arg(12i32),
 ///             Bar.singleton(),
 ///         ],
-///     },
-///     arguments = {
-///         Foo = [12i32],
 ///     },
 ///
 ///     // If there are multiple interface or service definitions, they are
@@ -145,20 +142,6 @@ macro_rules! define_module {
     ) => {
         $(
             $($module.provide($crate::WithInterface::with_interface::<$interface>($implementation));)*
-        )*
-    };
-    (
-        @provide $module:expr,
-        arguments = {
-            $($service:ty = [
-                $($arg:expr),*
-                $(,)?
-            ]),*
-            $(,)?
-        }
-    ) => {
-        $(
-            $($crate::WithArg::with_arg::<$service, _>($module, $arg);)*
         )*
     };
 }
