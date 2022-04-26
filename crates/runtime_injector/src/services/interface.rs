@@ -11,7 +11,7 @@ pub trait Interface: Service {}
 /// implementations for interfaces.
 pub trait InterfaceFor<S>: Interface
 where
-    S: Service,
+    S: ?Sized + Service,
 {
     #[doc(hidden)]
     fn from_svc(service: Svc<S>) -> Svc<Self>;
@@ -61,6 +61,18 @@ macro_rules! interface {
     ($interface:tt) => {
         impl $crate::Interface for dyn $interface {}
 
+        impl $crate::InterfaceFor<Self> for dyn $interface {
+            fn from_svc(service: $crate::Svc<Self>) -> $crate::Svc<Self> {
+                service
+            }
+
+            fn from_owned_svc(
+                service: ::std::boxed::Box<Self>,
+            ) -> ::std::boxed::Box<Self> {
+                service
+            }
+        }
+
         impl<T: $interface> $crate::InterfaceFor<T> for dyn $interface {
             fn from_svc(service: $crate::Svc<T>) -> $crate::Svc<Self> {
                 service
@@ -82,13 +94,13 @@ macro_rules! interface {
                 true
             }
 
-            fn from_provided(
+            fn from_interface(
                 provided: $crate::Svc<Self::Interface>,
             ) -> $crate::InjectResult<$crate::Svc<Self>> {
                 ::std::result::Result::Ok(provided)
             }
 
-            fn from_provided_owned(
+            fn from_interface_owned(
                 provided: ::std::boxed::Box<Self::Interface>,
             ) -> $crate::InjectResult<::std::boxed::Box<Self>> {
                 ::std::result::Result::Ok(provided)

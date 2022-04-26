@@ -1,11 +1,12 @@
 use crate::{
-    InjectError, InjectResult, Interface, Provider, Service, ServiceInfo, Svc,
+    InjectError, InjectResult, InterfaceFor, Provider, Service, ServiceInfo,
+    Svc,
 };
 
 /// A type that can be requested from a provider.
 pub trait FromProvider: Service {
     /// The interface to request providers for.
-    type Interface: ?Sized + Interface;
+    type Interface: ?Sized + InterfaceFor<Self>;
 
     /// Whether the given provider is valid for this type.
     fn should_provide(
@@ -13,11 +14,12 @@ pub trait FromProvider: Service {
     ) -> bool;
 
     /// Converts a provided service into a service pointer of this type.
-    fn from_provided(provided: Svc<Self::Interface>)
-        -> InjectResult<Svc<Self>>;
+    fn from_interface(
+        provided: Svc<Self::Interface>,
+    ) -> InjectResult<Svc<Self>>;
 
     /// Converts a provided service into an owned service pointer of this type.
-    fn from_provided_owned(
+    fn from_interface_owned(
         provided: Box<Self::Interface>,
     ) -> InjectResult<Box<Self>>;
 }
@@ -32,7 +34,7 @@ impl<S: Service> FromProvider for S {
     }
 
     #[inline]
-    fn from_provided(
+    fn from_interface(
         provided: Svc<Self::Interface>,
     ) -> InjectResult<Svc<Self>> {
         #[cfg(feature = "arc")]
@@ -51,7 +53,7 @@ impl<S: Service> FromProvider for S {
     }
 
     #[inline]
-    fn from_provided_owned(
+    fn from_interface_owned(
         provided: Box<Self::Interface>,
     ) -> InjectResult<Box<Self>> {
         provided

@@ -17,17 +17,19 @@ where
 impl<I, P> TypedProvider for InterfaceProvider<I, P>
 where
     P: TypedProvider,
-    I: ?Sized + InterfaceFor<P::Result>,
+    I: ?Sized + InterfaceFor<P::Result> + InterfaceFor<I>,
 {
     type Interface = I;
-    type Result = P::Result;
+    type Result = I;
 
     fn provide_typed(
         &self,
         injector: &Injector,
         request_info: &RequestInfo,
     ) -> InjectResult<Svc<Self::Result>> {
-        self.inner.provide_typed(injector, request_info)
+        self.inner
+            .provide_typed(injector, request_info)
+            .map(I::from_svc)
     }
 
     fn provide_owned_typed(
@@ -35,7 +37,9 @@ where
         injector: &Injector,
         request_info: &RequestInfo,
     ) -> InjectResult<Box<Self::Result>> {
-        self.inner.provide_owned_typed(injector, request_info)
+        self.inner
+            .provide_owned_typed(injector, request_info)
+            .map(I::from_owned_svc)
     }
 }
 

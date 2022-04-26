@@ -82,7 +82,7 @@ pub trait TypedProvider:
     type Interface: ?Sized + InterfaceFor<Self::Result>;
 
     /// The type of service this can provide.
-    type Result: Service;
+    type Result: ?Sized + Service;
 
     /// Provides an instance of the service. The [`Injector`] passed in can be
     /// used to retrieve instances of any dependencies this service has.

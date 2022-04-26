@@ -153,7 +153,7 @@ where
                 };
 
             // Downcast the service
-            let service = S::from_provided(service);
+            let service = S::from_interface(service);
             Some(service)
         })
     }
@@ -225,7 +225,7 @@ where
             };
 
             // Downcast the service
-            let service = S::from_provided_owned(service);
+            let service = S::from_interface_owned(service);
             Some(service)
         })
     }
