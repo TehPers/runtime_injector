@@ -253,6 +253,7 @@ mod module;
 mod provider_registry;
 mod providers;
 mod requests;
+mod service_factories;
 mod services;
 
 pub use builder::*;
@@ -262,6 +263,7 @@ pub use module::*;
 pub(crate) use provider_registry::*;
 pub use providers::*;
 pub use requests::*;
+pub use service_factories::*;
 pub use services::*;
 
 pub mod docs;
