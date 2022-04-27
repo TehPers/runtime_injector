@@ -14,15 +14,13 @@ use std::any::Any;
 /// use runtime_injector::{Injector, RequestInfo, ServiceFactory, Svc};
 ///
 /// struct Foo;
-/// struct Bar;
+/// struct Bar(Svc<Foo>);
 ///
-/// # fn _no_run() {
 /// fn factory(foo: Svc<Foo>) -> Bar {
-///     todo!()
+///     Bar(foo)
 /// }
-/// let injector: Injector = todo!();
+/// let injector = Injector::default();
 /// factory.invoke(&injector, &RequestInfo::new());
-/// # }
 /// ```
 pub trait ServiceFactory<D> {
     /// The resulting service from invoking this service factory.

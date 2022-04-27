@@ -111,8 +111,8 @@
 //!
 //! ```rust
 //! use runtime_injector::{
-//!     define_module, Module, interface, Injector, Svc, IntoSingleton,
-//!     TypedProvider, IntoTransient, constant, Service, WithInterface,
+//!     constant, define_module, interface, Injector, IntoSingleton,
+//!     IntoTransient, Module, Service, Svc, TypedProvider, WithInterface,
 //! };
 //! use std::error::Error;
 //!
@@ -123,8 +123,7 @@
 //! // trait, and we don't care what the concrete type is most of the time in
 //! // our other services as long as it implements this trait. Because of this,
 //! // we're going to use dynamic dispatch later so that we can determine the
-//! // concrete type at runtime (vs. generics, which are determined instead at
-//! // compile time).
+//! // concrete type at runtime.
 //! //
 //! // Since all implementations of this interface must be services for them to
 //! // be injected, we'll add that as a supertrait of `DataService`. With the
@@ -139,14 +138,18 @@
 //! #[derive(Default)]
 //! struct SqlDataService;
 //! impl DataService for SqlDataService {
-//!     fn get_user(&self, _user_id: &str) -> Option<User> { todo!() }
+//!     fn get_user(&self, _user_id: &str) -> Option<User> {
+//!         todo!()
+//!     }
 //! }
 //!
 //! // ... Or we can mock out the data service entirely!
 //! #[derive(Default)]
 //! struct MockDataService;
 //! impl DataService for MockDataService {
-//!     fn get_user(&self, _user_id: &str) -> Option<User> { Some(User) }
+//!     fn get_user(&self, _user_id: &str) -> Option<User> {
+//!         Some(User)
+//!     }
 //! }
 //!
 //! // Declare `DataService` as an interface
@@ -183,16 +186,16 @@
 //!     // We can manually add providers to our builder
 //!     builder.provide(UserService::new.singleton());
 //!     struct Foo(Svc<dyn DataService>);
-//!     
+//!
 //!     // Alternatively, modules can be used to group providers and
 //!     // configurations together, and can be defined via the
 //!     // define_module! macro
 //!     let module = define_module! {
 //!         services = [
-//!             // Simple tuple structs can be registered as services directly without
-//!             // defining any additional constructors
+//!             // Simple tuple structs can be registered as services directly
+//!             // without defining any additional constructors
 //!             Foo.singleton(),
-//!             
+//!
 //!             // Note that we can register closures as providers as well
 //!             (|_: Svc<dyn DataService>| "Hello, world!").singleton(),
 //!             (|_: Option<Svc<i32>>| 120.9).transient(),
@@ -207,16 +210,16 @@
 //!             dyn DataService = [MockDataService::default.singleton()],
 //!         },
 //!     };
-//!     
+//!
 //!     // You can easily add a module to your builder
 //!     builder.add_module(module);
-//!     
+//!
 //!     // Now that we've registered all our providers and implementations, we
 //!     // can start relying on our container to create our services for us!
 //!     let injector = builder.build();
 //!     let user_service: Svc<UserService> = injector.get()?;
 //!     let _user = user_service.get_user("john");
-//!     
+//!
 //!     Ok(())
 //! }
 //! ```
