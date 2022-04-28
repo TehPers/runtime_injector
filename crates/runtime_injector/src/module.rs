@@ -106,16 +106,17 @@ impl Module {
 macro_rules! define_module {
     {
         $(
-            $(#[$($attr:meta),*])*
+            $(#[$attr:meta])*
             $key:ident = $value:tt
         ),*
         $(,)?
     } => {
         {
             #[allow(unused_mut)]
-            let mut module = <$crate::Module as ::std::default::Default>::default();
+            let mut module =
+                <$crate::Module as ::std::default::Default>::default();
             $(
-                $(#[$($attr),*])*
+                $(#[$attr])*
                 $crate::define_module!(@provide &mut module, $key = $value);
             )*
             module
@@ -124,24 +125,44 @@ macro_rules! define_module {
     (
         @provide $module:expr,
         services = [
-            $($service:expr),*
+            $(
+                $(#[$attr:meta])*
+                $service:expr
+            ),*
             $(,)?
         ]
     ) => {
-        $($module.provide($service);)*
+        $(
+            $(#[$attr])*
+            $module.provide($service);
+        )*
     };
     (
         @provide $module:expr,
         interfaces = {
-            $($interface:ty = [
-                $($implementation:expr),*
-                $(,)?
-            ]),*
+            $(
+                $(#[$attr1:meta])*
+                $interface:ty = [
+                    $(
+                        $(#[$attr2:meta])*
+                        $implementation:expr
+                    ),*
+                    $(,)?
+                ]
+            ),*
             $(,)?
         }
     ) => {
         $(
-            $($module.provide($crate::WithInterface::with_interface::<$interface>($implementation));)*
+            $(#[$attr1])*
+            $(
+                $(#[$attr2])*
+                $module.provide(
+                    $crate::WithInterface::with_interface::<$interface>(
+                        $implementation
+                    )
+                );
+            )*
         )*
     };
 }
