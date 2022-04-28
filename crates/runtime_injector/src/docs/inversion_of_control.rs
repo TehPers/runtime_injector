@@ -157,7 +157,7 @@
 //!
 //! ```
 //! use runtime_injector::{
-//!     Arg, constant, define_module, interface, Injector, IntoSingleton,
+//!     constant, define_module, interface, Arg, Injector, IntoSingleton,
 //!     IntoTransient, Service, Svc, WithArg,
 //! };
 //!

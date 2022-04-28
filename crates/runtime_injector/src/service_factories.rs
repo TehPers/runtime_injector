@@ -1,5 +1,5 @@
-mod fallible;
 mod factory;
+mod fallible;
 
-pub use fallible::*;
 pub use factory::*;
+pub use fallible::*;
