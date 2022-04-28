@@ -118,16 +118,17 @@ where
     /// assert_eq!(1, *foo1.0);
     /// assert_eq!(2, *foo2.0);
     /// ```
-    pub fn with_arg<S, T>(&self, value: T) -> Factory<R>
+    #[must_use]
+    pub fn with_arg<S, T>(&self, value: T) -> Self
     where
         S: Service,
         T: Service + Clone,
     {
         let mut request_info = self.request_info.clone();
-        let _ = request_info.insert_parameter(
+        drop(request_info.insert_parameter(
             &Arg::<T>::param_name(ServiceInfo::of::<S>()),
             value,
-        );
+        ));
 
         Factory {
             injector: self.injector.clone(),

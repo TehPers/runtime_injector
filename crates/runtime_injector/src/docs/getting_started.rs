@@ -387,7 +387,7 @@
 )]
 #![cfg_attr(
     feature = "rc",
-    doc = "             let mut inner = self.0.borrow_mut().unwrap();"
+    doc = "             let mut inner = self.0.borrow_mut();"
 )]
 //!             *inner = message.to_string();
 //!         }

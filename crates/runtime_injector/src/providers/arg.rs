@@ -17,6 +17,7 @@ pub struct Arg<T: Service + Clone>(T);
 impl<T: Service + Clone> Arg<T> {
     /// Gets the parameter name of an [`Arg<T>`] requested by a particular
     /// service.
+    #[must_use]
     pub fn param_name(target: ServiceInfo) -> String {
         format!(
             "runtime_injector::Arg[target={:?},type={:?}]",
@@ -137,10 +138,10 @@ where
         request_info: &crate::RequestInfo,
     ) -> crate::InjectResult<crate::Svc<Self::Result>> {
         let mut request_info = request_info.clone();
-        let _ = request_info.insert_parameter(
+        drop(request_info.insert_parameter(
             &Arg::<T>::param_name(ServiceInfo::of::<Self::Result>()),
             self.arg.clone(),
-        );
+        ));
         self.inner.provide_typed(injector, &request_info)
     }
 
@@ -150,10 +151,10 @@ where
         request_info: &crate::RequestInfo,
     ) -> crate::InjectResult<Box<Self::Result>> {
         let mut request_info = request_info.clone();
-        let _ = request_info.insert_parameter(
+        drop(request_info.insert_parameter(
             &Arg::<T>::param_name(ServiceInfo::of::<Self::Result>()),
             self.arg.clone(),
-        );
+        ));
         self.inner.provide_owned_typed(injector, &request_info)
     }
 }
