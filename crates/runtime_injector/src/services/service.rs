@@ -188,6 +188,10 @@ pub enum InjectError {
         /// The service that was requested.
         service_info: ServiceInfo,
         /// The error that was thrown during service initialization.
+        #[cfg(feature = "arc")]
+        inner: Box<dyn Error + Send + Sync + 'static>,
+        /// The error that was thrown during service initialization.
+        #[cfg(feature = "rc")]
         inner: Box<dyn Error + 'static>,
     },
 
@@ -195,6 +199,12 @@ pub enum InjectError {
     /// the library itself.
     InternalError(String),
 }
+
+#[cfg(feature = "arc")]
+const _: () = {
+    const fn assert_send_sync<T: Send + Sync>() {}
+    assert_send_sync::<InjectError>();
+};
 
 impl Error for InjectError {
     fn source(&self) -> Option<&(dyn Error + 'static)> {
