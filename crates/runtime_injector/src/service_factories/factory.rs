@@ -1,4 +1,6 @@
-use crate::{InjectResult, Injector, Request, RequestInfo};
+use crate::{
+    InjectError, InjectResult, Injector, Request, RequestInfo, ServiceInfo,
+};
 use std::any::Any;
 
 /// A factory for creating instances of a service. All functions of arity 12 or
@@ -60,10 +62,10 @@ macro_rules! impl_provider_function {
                 let result = self($(
                     match <$type_name as Request>::request(&injector, request_info) {
                         Ok(dependency) => dependency,
-                        Err($crate::InjectError::MissingProvider { service_info }) => {
-                            return Err($crate::InjectError::MissingDependency {
+                        Err(InjectError::MissingProvider { service_info }) => {
+                            return Err(InjectError::MissingDependency {
                                 dependency_info: service_info,
-                                service_info: $crate::ServiceInfo::of::<R>(),
+                                service_info: ServiceInfo::of::<R>(),
                             })
                         },
                         Err(error) => return Err(error),
