@@ -1,11 +1,11 @@
-use crate::{RequestParameter, ServiceInfo};
+use crate::{InjectError, InjectResult, RequestParameter, ServiceInfo};
 use std::{
     collections::HashMap,
     fmt::{Debug, Formatter},
 };
 
 /// Information about an active request.
-#[derive(Clone)]
+#[derive(Clone, Default)]
 pub struct RequestInfo {
     service_path: Vec<ServiceInfo>,
     parameters: HashMap<String, Box<dyn RequestParameter>>,
@@ -22,12 +22,26 @@ impl RequestInfo {
     }
 
     /// Creates a new child instance of [`RequestInfo`] with the given service
-    /// appended to the end of the request path.
-    #[must_use]
-    pub fn with_request(&self, service: ServiceInfo) -> Self {
+    /// appended to the end of the request path. If a cycle is detected, an
+    /// error is returned instead.
+    pub fn with_request(
+        &self,
+        service_info: ServiceInfo,
+    ) -> InjectResult<Self> {
+        // Check for cycles
+        if self.service_path.contains(&service_info) {
+            let mut cycle = self.service_path.clone();
+            cycle.push(service_info);
+            return Err(InjectError::CycleDetected {
+                service_info,
+                cycle,
+            });
+        }
+
+        // Create child request info
         let mut child = self.clone();
-        child.service_path.push(service);
-        child
+        child.service_path.push(service_info);
+        Ok(child)
     }
 
     /// Gets the current request path. This can be used to configure a service
@@ -66,7 +80,6 @@ impl RequestInfo {
     /// let foo: Svc<Foo> = injector.get().unwrap();
     /// let bar: Svc<Bar> = injector.get().unwrap();
     /// let baz: Svc<Baz> = injector.get().unwrap();
-    #[rustfmt::skip]
     /// assert_eq!(1, foo.0.0);
     /// assert_eq!(2, bar.0.0);
     /// assert_eq!(0, baz.0);
@@ -118,17 +131,38 @@ impl RequestInfo {
     }
 }
 
-impl Default for RequestInfo {
-    fn default() -> Self {
-        RequestInfo::new()
+impl Debug for RequestInfo {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("RequestInfo")
+            .field("service_path", &self.service_path)
+            .finish_non_exhaustive()
     }
 }
 
-impl Debug for RequestInfo {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        // TODO: maybe use finish_non_exhaustive when 1.53 hits stable
-        f.debug_struct("RequestInfo")
-            .field("service_path", &self.service_path)
-            .finish()
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn parameter_is_inserted_then_removed() {
+        let mut info = RequestInfo::new();
+        info.insert_parameter("foo", "bar".to_string());
+        assert_eq!(
+            Some(&"bar".to_string()),
+            info.get_parameter("foo")
+                .and_then(<dyn RequestParameter>::downcast_ref)
+        );
+        assert_eq!(
+            Some(Box::new("bar".to_string())),
+            info.remove_parameter("foo")
+                .and_then(|p| p.downcast::<String>().ok())
+        );
+        assert!(info.get_parameter("foo").is_none());
+    }
+
+    #[test]
+    fn missing_parameter_is_not_removed() {
+        let mut info = RequestInfo::new();
+        assert!(info.remove_parameter("foo").is_none());
     }
 }

@@ -157,8 +157,8 @@
 //!
 //! ```
 //! use runtime_injector::{
-//!     constant, define_module, interface, Injector, IntoSingleton,
-//!     IntoTransient, Service, Svc,
+//!     constant, define_module, interface, Arg, Injector, IntoSingleton,
+//!     IntoTransient, Service, Svc, WithArg,
 //! };
 //!
 //! #[derive(Clone, Debug)]
@@ -182,15 +182,15 @@
 //! struct MockUserDatabase;
 //! impl UserDatabase for MockUserDatabase {}
 //!
-//! // Since we're having our connection string injected, we need to put it
-//! // behind some type that our container can inject
-//! struct SqlUserDatabase(Svc<String>);
+//! // Let's pass our connection string as an argument so we don't need to
+//! // hardcode it.
+//! struct SqlUserDatabase(Arg<String>);
 //! impl UserDatabase for SqlUserDatabase {}
 //!
 //! # #[derive(Default)]
 //! # struct IntegrationTestParameters;
 //! // We'll also inject our connection string and test parameters here
-//! struct IntegrationUserDatabase(Svc<String>, Svc<IntegrationTestParameters>);
+//! struct IntegrationUserDatabase(Arg<String>, Svc<IntegrationTestParameters>);
 //! impl UserDatabase for IntegrationUserDatabase {}
 //!
 //! trait UserAuthenticator: Service {
@@ -206,8 +206,8 @@
 //! }
 //!
 //! // We're switching to dynamic dispatch here which is marginally slower than
-//! // static dispatch, but we're going to lose most of our performance to I/O
-//! // anyway so the additional v-table lookup is hardly relevant here
+//! // static dispatch, but we're going to lose most of our performance to
+//! // network I/O anyway when making database requests.
 //! struct DatabaseUserAuthenticator(Svc<dyn UserDatabase>);
 //! impl UserAuthenticator for DatabaseUserAuthenticator {
 //!     fn has_access(&self, user_id: u32, scope: &str) -> bool {
@@ -216,41 +216,33 @@
 //!     }
 //! }
 //!
-//! // Now we need to declare what services we can use.
-//! interface! {
-//!     // Since we have three implementations of a user database, we'll
-//!     // declare `UserDatabase` as being an interface that supports those
-//!     // three types
-//!     dyn UserDatabase = [
-//!         MockUserDatabase,
-//!         SqlUserDatabase,
-//!         IntegrationUserDatabase,
-//!     ],
-//!
-//!     // Similarly, we'll declare `UserAuthenticator` as being an interface
-//!     // that supports both our database-backed authenticator and mock one
-//!     dyn UserAuthenticator = [
-//!         MockUserAuthenticator,
-//!         DatabaseUserAuthenticator,
-//!     ],
-//! }
+//! // Now we need to declare our interfaces. These are the traits we want to
+//! // have abstracted away.
+//! interface!(UserDatabase);
+//! interface!(UserAuthenticator);
 //!
 //! fn main() {
 //!     // We can easily determine which implementations we will use in one
 //!     // place by creating a module. If we add more implementations later, we
 //!     // only need to change a few lines of code in one place rather than
 //!     // adding #[cfg] attributes all over our code
+//!     let connection_string = "our_secret_connection_string".to_string();
 //!     let module = define_module! {
 //!         interfaces = {
-//!             dyn UserAuthenticator = [DatabaseUserAuthenticator.singleton()]
-//!         },
-//!         #[cfg(feature = "integration")]
-//!         interfaces = {
-//!             dyn UserDatabase = [IntegrationUserDatabase.singleton()]
-//!         },
-//!         #[cfg(not(feature = "integration"))]
-//!         interfaces = {
-//!             dyn UserDatabase = [SqlUserDatabase.singleton()]
+//!             dyn UserAuthenticator = [
+//!                 DatabaseUserAuthenticator.singleton()
+//!             ],
+//!             #[cfg(feature = "integration")]
+//!             dyn UserDatabase = [
+//!                 IntegrationUserDatabase
+//!                     .singleton()
+//!                     .with_arg(connection_string)
+//!                     .with_arg(IntegrationTestParameters::default())
+//!             ],
+//!             #[cfg(not(feature = "integration"))]
+//!             dyn UserDatabase = [
+//!                 SqlUserDatabase.singleton().with_arg(connection_string)
+//!             ],
 //!         },
 //!     };
 //!
@@ -259,11 +251,6 @@
 //!     // We'll start by adding our module to it
 //!     let mut builder = Injector::builder();
 //!     builder.add_module(module);
-//!
-//!     // Let's add our connection string and integration parameters now
-//!     builder.provide(constant("our_secret_connection_string".to_string()));
-//!     #[cfg(feature = "integration")]
-//!     builder.provide(constant(IntegrationTestParameters::default()));
 //!
 //!     // Now we're ready to start creating our services! We have one single
 //!     // way of creating each of our services, regardless of what the actual
@@ -285,7 +272,9 @@
 //!     // create a module which provides the mock implementation instead
 //!     let _module = define_module! {
 //!         interfaces = {
-//!             dyn UserAuthenticator = [DatabaseUserAuthenticator.singleton()],
+//!             dyn UserAuthenticator = [
+//!                 DatabaseUserAuthenticator.singleton()
+//!             ],
 //!             dyn UserDatabase = [MockUserDatabase::default.singleton()],
 //!         },
 //!     };

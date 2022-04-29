@@ -22,11 +22,12 @@ where
     P: TypedProvider,
     F: Service + Fn(&Injector, &RequestInfo) -> bool,
 {
+    type Interface = <P as TypedProvider>::Interface;
     type Result = P::Result;
 
     #[inline]
     fn provide_typed(
-        &mut self,
+        &self,
         injector: &Injector,
         request_info: &RequestInfo,
     ) -> InjectResult<Svc<Self::Result>> {
@@ -41,7 +42,7 @@ where
 
     #[inline]
     fn provide_owned_typed(
-        &mut self,
+        &self,
         injector: &Injector,
         request_info: &RequestInfo,
     ) -> InjectResult<Box<Self::Result>> {
@@ -56,7 +57,7 @@ where
 }
 
 /// Defines a conversion into a conditional provider. This trait is
-/// automatically implemented for all types that implement [`TypedProvider`].
+/// automatically implemented for all types that implement [`TypedProvider<I>`].
 pub trait WithCondition: TypedProvider {
     /// Creates a conditional provider. Conditional providers create their
     /// values only if their condition is met. If the condition is not met,
@@ -97,5 +98,80 @@ where
             condition,
             inner: self,
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::sync::Mutex;
+
+    use super::*;
+    use crate::IntoSingleton;
+
+    #[derive(Default)]
+    struct Foo;
+
+    /// When condition returns true, then a value is provided.
+    #[test]
+    fn test_condition_true() {
+        let mut builder = Injector::builder();
+        builder.provide(Foo::default.singleton().with_condition(|_, _| true));
+
+        let injector = builder.build();
+        let foo: Option<Svc<Foo>> = injector.get().unwrap();
+
+        assert!(foo.is_some());
+    }
+
+    /// When condition returns true only once, then a value is provided only once.
+    #[test]
+    fn test_condition_true_once() {
+        let mut builder = Injector::builder();
+        let provided = Mutex::new(false);
+        builder.provide(Foo::default.singleton().with_condition(
+            move |_, _| {
+                let mut provided = provided.lock().unwrap();
+                if *provided {
+                    return false;
+                }
+                *provided = true;
+                true
+            },
+        ));
+
+        // Create first value
+        let injector = builder.build();
+        let foo: Option<Svc<Foo>> = injector.get().unwrap();
+        assert!(foo.is_some());
+
+        // Create second value
+        let foo: Option<Svc<Foo>> = injector.get().unwrap();
+        assert!(foo.is_none());
+    }
+
+    /// When condition returns true after returning false, then a value is provided.
+    #[test]
+    fn test_condition_true_after_false() {
+        let mut builder = Injector::builder();
+        let provided = Mutex::new(false);
+        builder.provide(Foo::default.singleton().with_condition(
+            move |_, _| {
+                let mut provided = provided.lock().unwrap();
+                if *provided {
+                    return true;
+                }
+                *provided = true;
+                false
+            },
+        ));
+
+        // Create first value
+        let injector = builder.build();
+        let foo: Option<Svc<Foo>> = injector.get().unwrap();
+        assert!(foo.is_none());
+
+        // Create second value
+        let foo: Option<Svc<Foo>> = injector.get().unwrap();
+        assert!(foo.is_some());
     }
 }

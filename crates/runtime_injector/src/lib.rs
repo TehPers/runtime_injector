@@ -15,8 +15,7 @@
 //! ## Getting started
 //!
 //! If you are unfamiliar with dependency injection, then you may want to check
-//! about how a container can help
-//! [simplify your application][ioc]. Otherwise,
+//! about how a container can help [simplify your application][ioc]. Otherwise,
 //! check out the [getting started guide][getting-started]
 //!
 //! [ioc]: crate::docs::inversion_of_control
@@ -44,7 +43,6 @@
 //! type parameter, you use a service pointer to the interface for your
 //! dependency. This makes your code easier to read and faster to write, and
 //! keeps your services decoupled from their dependencies and dependents.
-//!
 //! Interfaces are implemented as trait objects in runtime_injector. For
 //! instance, you may define a trait `UserDatabase` and implement it for
 //! several different types. [`Svc<dyn UserDatabase>`](crate::Svc<T>) is a
@@ -57,7 +55,7 @@
 //!
 //! Lifetimes of services created by the [`Injector`] are controlled by the
 //! [`Provider`] used to construct those lifetimes. Currently, there are three
-//! built-in service provider types:
+//! primary built-in service provider types:
 //!
 //! - **[Transient](crate::TransientProvider):** A service is created each time
 //!   it is requested. This will never return the same instance of a service
@@ -88,7 +86,6 @@
 //! that you cannot get mutable or owned access to the contents of those
 //! pointers since they are shared pointers. As a result, you may need to clone
 //! some dependencies in your constructors if you want to be able to own them.
-//!
 //! If your dependency is a transient service, then it might make more sense
 //! to inject it as a [`Box<T>`] than clone it from a reference-counted service
 //! pointer. In these cases, you can request a [`Box<T>`] directly from the
@@ -102,7 +99,6 @@
 //! newtype for [`String`], but that would be a bit excessive for passing in a
 //! single value. If you had several arguments you needed to pass in this way,
 //! then that would mean you would need a new type for each one.
-//!
 //! Rather than creating a bunch of newtypes, you can use [`Arg<T>`] to pass in
 //! pre-defined values directly to your services. For example, you can use
 //! `Arg<String>` to pass in your connection string, plus you can use
@@ -113,10 +109,10 @@
 //!
 //! ## Example
 //!
-//! ```
+//! ```rust
 //! use runtime_injector::{
-//!     define_module, Module, interface, Injector, Svc, IntoSingleton,
-//!     TypedProvider, IntoTransient, constant, Service
+//!     constant, define_module, interface, Injector, IntoSingleton,
+//!     IntoTransient, Module, Service, Svc, TypedProvider, WithInterface,
 //! };
 //! use std::error::Error;
 //!
@@ -127,8 +123,7 @@
 //! // trait, and we don't care what the concrete type is most of the time in
 //! // our other services as long as it implements this trait. Because of this,
 //! // we're going to use dynamic dispatch later so that we can determine the
-//! // concrete type at runtime (vs. generics, which are determined instead at
-//! // compile time).
+//! // concrete type at runtime.
 //! //
 //! // Since all implementations of this interface must be services for them to
 //! // be injected, we'll add that as a supertrait of `DataService`. With the
@@ -143,20 +138,22 @@
 //! #[derive(Default)]
 //! struct SqlDataService;
 //! impl DataService for SqlDataService {
-//!     fn get_user(&self, _user_id: &str) -> Option<User> { todo!() }
+//!     fn get_user(&self, _user_id: &str) -> Option<User> {
+//!         todo!()
+//!     }
 //! }
 //!
 //! // ... Or we can mock out the data service entirely!
 //! #[derive(Default)]
 //! struct MockDataService;
 //! impl DataService for MockDataService {
-//!     fn get_user(&self, _user_id: &str) -> Option<User> { Some(User) }
+//!     fn get_user(&self, _user_id: &str) -> Option<User> {
+//!         Some(User)
+//!     }
 //! }
 //!
-//! // Specify which types implement the DataService interface. This does not
-//! // determine the actual implementation used. It only registers the types as
-//! // possible implementations of the DataService interface.
-//! interface!(dyn DataService = [SqlDataService, MockDataService]);
+//! // Declare `DataService` as an interface
+//! interface!(DataService);
 //!
 //! // Here's another service our application uses. This service depends on our
 //! // data service, however it doesn't care how that service is actually
@@ -172,7 +169,6 @@
 //!     pub fn new(data_service: Svc<dyn DataService>) -> Self {
 //!         UserService { data_service }
 //!     }
-//!
 //!     pub fn get_user(&self, user_id: &str) -> Option<User> {
 //!         // UserService doesn't care how the user is actually retrieved
 //!         self.data_service.get_user(user_id)
@@ -189,26 +185,23 @@
 //!
 //!     // We can manually add providers to our builder
 //!     builder.provide(UserService::new.singleton());
-//!
 //!     struct Foo(Svc<dyn DataService>);
-//!     
+//!
 //!     // Alternatively, modules can be used to group providers and
 //!     // configurations together, and can be defined via the
 //!     // define_module! macro
 //!     let module = define_module! {
 //!         services = [
-//!             // Simple tuple structs can be registered as services directly without
-//!             // defining any additional constructors
+//!             // Simple tuple structs can be registered as services directly
+//!             // without defining any additional constructors
 //!             Foo.singleton(),
-//!             
+//!
 //!             // Note that we can register closures as providers as well
 //!             (|_: Svc<dyn DataService>| "Hello, world!").singleton(),
 //!             (|_: Option<Svc<i32>>| 120.9).transient(),
-//!
 //!             // Since we know our dependency is transient, we can request an
 //!             // owned pointer to it rather than a reference-counted pointer
 //!             (|value: Box<f32>| format!("{}", value)).transient(),
-//!
 //!             // We can also provide constant values directly to our services
 //!             constant(8usize),
 //!         ],
@@ -226,7 +219,7 @@
 //!     let injector = builder.build();
 //!     let user_service: Svc<UserService> = injector.get()?;
 //!     let _user = user_service.get_user("john");
-//!     
+//!
 //!     Ok(())
 //! }
 //! ```
@@ -236,10 +229,12 @@
 #![warn(missing_docs)]
 #![allow(
     clippy::module_name_repetitions,
+    clippy::module_inception,
     clippy::missing_errors_doc,
     clippy::doc_markdown,
     clippy::needless_doctest_main,
-    clippy::needless_pass_by_value
+    clippy::needless_pass_by_value,
+    clippy::wildcard_imports
 )]
 
 #[cfg(not(any(feature = "arc", feature = "rc")))]
@@ -252,23 +247,34 @@ compile_error!(
     "The 'arc' and 'rc' features are mutually exclusive and cannot be enabled together."
 );
 
-mod any;
 mod builder;
 mod injector;
 mod iter;
 mod module;
+mod provider_registry;
+mod providers;
 mod requests;
+mod service_factories;
 mod services;
 
-pub use any::*;
 pub use builder::*;
 pub use injector::*;
 pub use iter::*;
 pub use module::*;
+pub(crate) use provider_registry::*;
+pub use providers::*;
 pub use requests::*;
+pub use service_factories::*;
 pub use services::*;
 
 pub mod docs;
+
+#[doc(hidden)]
+pub mod private {
+    //! Private re-exports. Changes in this module are never considered breaking.
+
+    pub use downcast_rs;
+}
 
 #[cfg(test)]
 mod tests;

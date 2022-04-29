@@ -1,39 +1,74 @@
 use crate::{
-    Injector, Module, Provider, ProviderMap, RequestInfo, ServiceInfo,
+    provider_registry::{ProviderRegistry, ProviderRegistryType},
+    Injector, Interface, InterfaceRegistry, Module, Provider, RequestInfo,
+    Service, ServiceInfo, Svc,
+};
+use std::{
+    collections::{hash_map::Entry, HashMap},
+    fmt::Debug,
 };
 
 /// A builder for an [`Injector`].
-#[derive(Default)]
+#[derive(Debug, Default)]
 pub struct InjectorBuilder {
-    providers: ProviderMap,
+    registry: InterfaceRegistryBuilder,
     root_info: RequestInfo,
 }
 
 impl InjectorBuilder {
     /// Assigns the provider for a service type. Multiple providers can be
     /// registered for a service.
-    pub fn provide<P: Provider>(&mut self, provider: P) {
-        self.add_provider(Box::new(provider))
+    pub fn provide<P>(&mut self, provider: P)
+    where
+        P: Provider,
+    {
+        self.add_provider(Svc::new(provider));
     }
 
     /// Adds a provider to the injector.
-    #[allow(clippy::missing_panics_doc)]
-    pub fn add_provider(&mut self, provider: Box<dyn Provider>) {
-        // Should never panic
-        self.providers
-            .entry(provider.result())
-            .or_insert_with(|| Some(Vec::new()))
-            .as_mut()
-            .unwrap()
-            .push(provider)
+    pub fn add_provider<I>(
+        &mut self,
+        provider: Svc<dyn Provider<Interface = I>>,
+    ) where
+        I: ?Sized + Interface,
+    {
+        self.registry
+            .ensure_providers_mut()
+            .add_provider_for(provider.result(), provider);
     }
 
     /// Removes all providers for a service type.
     pub fn remove_providers(
         &mut self,
         service_info: ServiceInfo,
-    ) -> Option<Vec<Box<dyn Provider>>> {
-        self.providers.remove(&service_info).flatten()
+    ) -> Vec<Svc<dyn Provider<Interface = dyn Service>>> {
+        self.remove_providers_for::<dyn Service>(service_info)
+    }
+
+    /// Removes all providers for a service type from an interface.
+    pub fn remove_providers_for<I>(
+        &mut self,
+        service_info: ServiceInfo,
+    ) -> Vec<Svc<dyn Provider<Interface = I>>>
+    where
+        I: ?Sized + Interface,
+    {
+        self.registry
+            .remove_providers_for::<I>(service_info)
+            .unwrap_or_default()
+    }
+
+    /// Clears all providers.
+    pub fn clear_providers(&mut self) {
+        self.registry.clear();
+    }
+
+    /// Clears all providers for an interface.
+    pub fn clear_providers_for<I>(&mut self)
+    where
+        I: ?Sized + Interface,
+    {
+        self.registry.remove_providers::<I>();
     }
 
     /// Borrows the root [`RequestInfo`] that will be used by calls to
@@ -57,26 +92,85 @@ impl InjectorBuilder {
     /// module, they are overridden.
     #[allow(clippy::missing_panics_doc)]
     pub fn add_module(&mut self, module: Module) {
-        for (result, module_providers) in module.providers {
-            // Should never panic
-            let mut module_providers = module_providers.unwrap();
-            self.providers
-                .entry(result)
-                .and_modify(|providers| {
-                    // Should never panic
-                    providers.as_mut().unwrap().append(&mut module_providers)
-                })
-                .or_insert_with(|| Some(module_providers));
-        }
+        // Merge providers
+        self.registry.merge(module.registry);
 
+        // Merge parameters
         for (key, value) in module.parameters {
-            drop(self.root_info_mut().insert_parameter_boxed(&key, value));
+            self.root_info_mut().insert_parameter_boxed(&key, value);
         }
     }
 
     /// Builds the injector.
     #[must_use]
     pub fn build(self) -> Injector {
-        Injector::new_from_parts(self.providers, self.root_info)
+        Injector::new_from_parts(self.registry.build(), self.root_info)
+    }
+}
+
+#[derive(Debug, Default)]
+pub(crate) struct InterfaceRegistryBuilder {
+    registries: HashMap<ServiceInfo, Box<dyn ProviderRegistryType>>,
+}
+
+impl InterfaceRegistryBuilder {
+    pub fn ensure_providers_mut<I>(&mut self) -> &mut ProviderRegistry<I>
+    where
+        I: ?Sized + Interface,
+    {
+        self.registries
+            .entry(ServiceInfo::of::<I>())
+            .or_insert_with(|| Box::new(ProviderRegistry::<I>::default()))
+            .downcast_mut()
+            .unwrap()
+    }
+
+    pub fn remove_providers<I>(&mut self) -> Option<ProviderRegistry<I>>
+    where
+        I: ?Sized + Interface,
+    {
+        let interface_info = ServiceInfo::of::<I>();
+        let registry = self.registries.remove(&interface_info)?;
+        let registry = registry.downcast().unwrap();
+        Some(*registry)
+    }
+
+    pub fn remove_providers_for<I>(
+        &mut self,
+        service_info: ServiceInfo,
+    ) -> Option<Vec<Svc<dyn Provider<Interface = I>>>>
+    where
+        I: ?Sized + Interface,
+    {
+        let registry = self.registries.get_mut(&service_info)?;
+        let registry: &mut ProviderRegistry<I> =
+            registry.downcast_mut().unwrap();
+        registry.remove_providers_for(service_info)
+    }
+
+    pub fn clear(&mut self) {
+        self.registries.clear();
+    }
+
+    pub fn merge(&mut self, other: InterfaceRegistryBuilder) {
+        for (interface_info, other_providers) in other.registries {
+            match self.registries.entry(interface_info) {
+                Entry::Occupied(entry) => {
+                    entry.into_mut().merge(other_providers).unwrap();
+                }
+                Entry::Vacant(entry) => {
+                    entry.insert(other_providers);
+                }
+            }
+        }
+    }
+
+    pub fn build(self) -> InterfaceRegistry {
+        let registries = self
+            .registries
+            .into_iter()
+            .map(|(k, v)| (k, v.into()))
+            .collect();
+        InterfaceRegistry::new(registries)
     }
 }

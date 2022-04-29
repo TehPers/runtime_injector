@@ -28,7 +28,7 @@ where
     type Result = R;
 
     fn invoke(
-        &mut self,
+        &self,
         injector: &Injector,
         request_info: &RequestInfo,
     ) -> InjectResult<Self::Result> {
@@ -114,5 +114,106 @@ where
             inner: self,
             marker: PhantomData,
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::{constant, IntoTransient, Svc};
+    use std::{
+        fmt::{Display, Formatter},
+        sync::Mutex,
+    };
+
+    #[derive(Debug)]
+    struct FooError;
+
+    impl Error for FooError {}
+
+    impl Display for FooError {
+        fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+            write!(f, "An error occurred while creating a Foo")
+        }
+    }
+
+    struct Foo;
+    fn make_foo(succeed: Svc<bool>) -> Result<Foo, FooError> {
+        if *succeed { Ok(Foo) } else { Err(FooError) }
+    }
+
+    /// A value is returned if the service factory succeeds.
+    #[test]
+    fn test_fallible_service_factory_success() {
+        let mut builder = Injector::builder();
+        builder.provide(make_foo.fallible().transient());
+        builder.provide(constant(true));
+
+        let injector = builder.build();
+        let _foo: Svc<Foo> = injector.get().unwrap();
+    }
+
+    /// A value is not returned if the service factory fails.
+    #[test]
+    fn test_fallible_service_factory_failure() {
+        let mut builder = Injector::builder();
+        builder.provide(make_foo.fallible().transient());
+        builder.provide(constant(false));
+
+        let injector = builder.build();
+        let foo_result: InjectResult<Svc<Foo>> = injector.get();
+        assert!(foo_result.is_err());
+    }
+
+    /// If a value fails after succeeding, an error is returned.
+    #[test]
+    fn test_fallible_service_factory_failure_after_success() {
+        let mut builder = Injector::builder();
+        builder.provide(make_foo.fallible().transient());
+        builder.provide(constant(Mutex::new(true)));
+        builder.provide(
+            (|should_succeed: Svc<Mutex<bool>>| {
+                *should_succeed.lock().unwrap()
+            })
+            .transient(),
+        );
+
+        // First request succeeds
+        let injector = builder.build();
+        let foo_result: InjectResult<Svc<Foo>> = injector.get();
+        assert!(foo_result.is_ok());
+
+        // Second request fails
+        let should_succeed: Svc<Mutex<bool>> = injector.get().unwrap();
+        *should_succeed.lock().unwrap() = false;
+        drop(should_succeed);
+        let foo_result: InjectResult<Svc<Foo>> = injector.get();
+        assert!(foo_result.is_err());
+    }
+
+    /// If a value succeeds after failing, a value is returned.
+    #[test]
+    fn test_fallible_service_factory_success_after_failure() {
+        let mut builder = Injector::builder();
+        builder.provide(make_foo.fallible().transient());
+        builder.provide(constant(Mutex::new(false)));
+        builder.provide(
+            (|should_succeed: Svc<Mutex<bool>>| {
+                *should_succeed.lock().unwrap()
+            })
+            .transient(),
+        );
+
+        // First request fails
+        let injector = builder.build();
+        let foo_result: InjectResult<Svc<Foo>> = injector.get();
+        assert!(foo_result.is_err());
+
+        // Second request succeeds
+        let should_succeed: Svc<Mutex<bool>> = injector.get().unwrap();
+        *should_succeed.lock().unwrap() = true;
+        drop(should_succeed);
+        let foo_result: InjectResult<Svc<Foo>> = injector.get();
+        assert!(foo_result.is_ok());
     }
 }

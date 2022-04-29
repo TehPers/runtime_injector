@@ -1,6 +1,7 @@
 use crate::{
-    InjectResult, Injector, Request, RequestInfo, Service, ServiceInfo,
+    InjectError, InjectResult, Injector, Request, RequestInfo, ServiceInfo,
 };
+use std::any::Any;
 
 /// A factory for creating instances of a service. All functions of arity 12 or
 /// less are automatically service factories if the arguments to that function
@@ -15,23 +16,21 @@ use crate::{
 /// use runtime_injector::{Injector, RequestInfo, ServiceFactory, Svc};
 ///
 /// struct Foo;
-/// struct Bar;
+/// struct Bar(Svc<Foo>);
 ///
-/// # fn _no_run() {
 /// fn factory(foo: Svc<Foo>) -> Bar {
-///     todo!()
+///     Bar(foo)
 /// }
-/// let injector: Injector = todo!();
+/// let injector = Injector::default();
 /// factory.invoke(&injector, &RequestInfo::new());
-/// # }
 /// ```
-pub trait ServiceFactory<D>: Service {
+pub trait ServiceFactory<D> {
     /// The resulting service from invoking this service factory.
-    type Result: Service;
+    type Result: Any;
 
     /// Invokes this service factory, creating an instance of the service.
     fn invoke(
-        &mut self,
+        &self,
         injector: &Injector,
         request_info: &RequestInfo,
     ) -> InjectResult<Self::Result>;
@@ -48,26 +47,25 @@ macro_rules! impl_provider_function {
     (@impl ($($type_name:ident),*)) => {
         impl<F, R $(, $type_name)*> ServiceFactory<($($type_name,)*)> for F
         where
-            F: Service + FnMut($($type_name),*) -> R,
-            R: Service,
+            F: Fn($($type_name),*) -> R,
+            R: Any,
             $($type_name: Request,)*
         {
             type Result = F::Output;
 
             #[allow(unused_variables, unused_mut, unused_assignments, non_snake_case)]
             fn invoke(
-                &mut self,
+                &self,
                 injector: &Injector,
                 request_info: &RequestInfo
             ) -> InjectResult<Self::Result> {
-                let request_info = request_info.with_request(ServiceInfo::of::<R>());
                 let result = self($(
-                    match <$type_name as Request>::request(&injector, &request_info) {
+                    match <$type_name as Request>::request(&injector, request_info) {
                         Ok(dependency) => dependency,
-                        Err($crate::InjectError::MissingProvider { service_info }) => {
-                            return Err($crate::InjectError::MissingDependency {
+                        Err(InjectError::MissingProvider { service_info }) => {
+                            return Err(InjectError::MissingDependency {
                                 dependency_info: service_info,
-                                service_info: $crate::ServiceInfo::of::<R>(),
+                                service_info: ServiceInfo::of::<R>(),
                             })
                         },
                         Err(error) => return Err(error),

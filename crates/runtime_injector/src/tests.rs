@@ -1,9 +1,8 @@
 #![allow(clippy::blacklisted_name)]
-
 use crate::{
     constant, interface, InjectError, InjectResult, Injector, IntoSingleton,
     IntoTransient, RequestInfo, Service, ServiceInfo, Services, Svc,
-    TypedProvider,
+    WithInterface,
 };
 use std::sync::Mutex;
 
@@ -108,6 +107,7 @@ fn singleton() {
 
     assert_ne!(svc1.0, svc2.dep1.0);
     assert_ne!(svc1.0, svc3.dep1.0);
+    assert_ne!(svc1.0, svc3.dep2.dep1.0);
     assert_ne!(svc2.dep1.0, svc3.dep1.0);
 }
 
@@ -134,6 +134,7 @@ fn constants() {
 
     assert_ne!(svc1.0, svc2.dep1.0);
     assert_ne!(svc1.0, svc3.dep1.0);
+    assert_ne!(svc1.0, svc3.dep2.dep1.0);
     assert_ne!(svc2.dep1.0, svc3.dep1.0);
 }
 
@@ -143,15 +144,7 @@ fn interfaces() {
         fn bar(&self) -> i32;
     }
 
-    interface!(
-        dyn Foo = [
-            Svc1,
-            #[cfg(test)]
-            Svc2,
-            #[cfg(not(test))]
-            Svc3,
-        ]
-    );
+    interface!(Foo);
 
     impl Foo for Svc1 {
         fn bar(&self) -> i32 {
@@ -209,22 +202,20 @@ fn interfaces() {
 #[test]
 fn multi_injection() {
     trait Foo: Service {}
-
     impl Foo for Svc1 {}
-    impl Foo for Svc2 {}
-    impl Foo for Svc3 {}
 
-    interface!(dyn Foo = [Svc1, Svc2, Svc3]);
+    interface!(Foo);
 
     let mut builder = Injector::builder();
     builder.provide(Svc1::default.transient().with_interface::<dyn Foo>());
 
     let injector = builder.build();
+    dbg!(&injector);
     let mut foos: Services<dyn Foo> = injector.get().unwrap();
-    assert_eq!(1, foos.len());
+    assert_eq!(1, foos.iter().count());
 
     let foos: Vec<Svc<dyn Foo>> =
-        foos.get_all().collect::<InjectResult<_>>().unwrap();
+        foos.iter().collect::<InjectResult<_>>().unwrap();
     assert_eq!(1, foos.len());
 }
 
@@ -270,6 +261,6 @@ fn request_info_has_correct_path() {
     assert_eq!(&[ServiceInfo::of::<Foo>()], foo.1.service_path());
     assert_eq!(
         &[ServiceInfo::of::<Foo>(), ServiceInfo::of::<Bar>()],
-        foo.0 .0.service_path()
+        foo.0.0.service_path()
     );
 }

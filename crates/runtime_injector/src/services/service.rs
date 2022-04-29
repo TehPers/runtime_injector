@@ -1,3 +1,5 @@
+use crate::interface;
+use downcast_rs::impl_downcast;
 use std::{
     any::{Any, TypeId},
     error::Error,
@@ -29,37 +31,28 @@ feature_unique!(
         /// - **arc**: Pointer type is [`Arc<T>`](std::sync::Arc) (default)
     },
     {
+        #[cfg_attr(
+            not(doc),
+            doc = "",
+            doc = "The current pointer type is [`Rc<T>`](std::rc::Rc)."
+        )]
         pub type Svc<T> = std::rc::Rc<T>;
     },
     {
+        #[cfg_attr(
+            not(doc),
+            doc = "",
+            doc = "The current pointer type is [`Arc<T>`](std::sync::Arc)."
+        )]
         pub type Svc<T> = std::sync::Arc<T>;
     }
 );
 
-feature_unique!(
-    {
-        /// A reference-counted service pointer holding an instance of `dyn
-        /// Any`.
-    },
-    {
-        pub type DynSvc = Svc<dyn Any>;
-    },
-    {
-        pub type DynSvc = Svc<dyn Any + Send + Sync>;
-    }
-);
+/// A service pointer holding an instance of `dyn Service`.
+pub type DynSvc = Svc<dyn Service>;
 
-feature_unique!(
-    {
-        /// An owned service pointer holding an instance of `dyn Any`.
-    },
-    {
-        pub type OwnedDynSvc = Box<dyn Any>;
-    },
-    {
-        pub type OwnedDynSvc = Box<dyn Any + Send + Sync>;
-    }
-);
+/// An owned service pointer holding an instance of `dyn Service`.
+pub type OwnedDynSvc = Box<dyn Service>;
 
 feature_unique!(
     {
@@ -67,14 +60,22 @@ feature_unique!(
         /// service.
     },
     {
-        pub trait Service: Any {}
-        impl<T: ?Sized + Any> Service for T {}
+        pub trait Service: downcast_rs::Downcast {}
+        impl<T: ?Sized + downcast_rs::Downcast> Service for T {}
     },
     {
-        pub trait Service: Any + Send + Sync {}
-        impl<T: ?Sized + Any + Send + Sync> Service for T {}
+        pub trait Service: downcast_rs::DowncastSync {}
+        impl<T: ?Sized + downcast_rs::DowncastSync> Service for T {}
     }
 );
+
+interface!(Service);
+
+#[cfg(feature = "arc")]
+impl_downcast!(sync Service);
+
+#[cfg(feature = "rc")]
+impl_downcast!(Service);
 
 /// A result from attempting to inject dependencies into a service and
 /// construct an instance of it.
@@ -89,6 +90,7 @@ pub struct ServiceInfo {
 
 impl ServiceInfo {
     /// Creates a [`ServiceInfo`] for the given type.
+    #[inline]
     #[must_use]
     pub fn of<T: ?Sized + Any>() -> Self {
         ServiceInfo {
@@ -98,12 +100,14 @@ impl ServiceInfo {
     }
 
     /// Gets the [`TypeId`] for this service.
+    #[inline]
     #[must_use]
     pub fn id(&self) -> TypeId {
         self.id
     }
 
     /// Gets the type name of this service.
+    #[inline]
     #[must_use]
     pub fn name(&self) -> &'static str {
         self.name
@@ -112,6 +116,7 @@ impl ServiceInfo {
 
 /// An error that has occurred during creation of a service.
 #[derive(Debug)]
+#[non_exhaustive]
 pub enum InjectError {
     /// Failed to find a provider for the requested type.
     MissingProvider {
@@ -157,8 +162,6 @@ pub enum InjectError {
     MultipleProviders {
         /// The service that was requested.
         service_info: ServiceInfo,
-        /// The number of providers registered for that service.
-        providers: usize,
     },
 
     /// The registered provider can't provide an owned variant of the requested
@@ -185,6 +188,10 @@ pub enum InjectError {
         /// The service that was requested.
         service_info: ServiceInfo,
         /// The error that was thrown during service initialization.
+        #[cfg(feature = "arc")]
+        inner: Box<dyn Error + Send + Sync + 'static>,
+        /// The error that was thrown during service initialization.
+        #[cfg(feature = "rc")]
         inner: Box<dyn Error + 'static>,
     },
 
@@ -192,6 +199,12 @@ pub enum InjectError {
     /// the library itself.
     InternalError(String),
 }
+
+#[cfg(feature = "arc")]
+const _: () = {
+    const fn assert_send_sync<T: Send + Sync>() {}
+    assert_send_sync::<InjectError>();
+};
 
 impl Error for InjectError {
     fn source(&self) -> Option<&(dyn Error + 'static)> {
@@ -211,8 +224,15 @@ impl Display for InjectError {
             }
             InjectError::MissingDependency {
                 service_info,
-                ..
-            } => write!(f, "{} is missing a dependency", service_info.name()),
+                dependency_info,
+            } => {
+                write!(
+                    f,
+                    "{} has no provider (required by {})",
+                    dependency_info.name(),
+                    service_info.name()
+                )
+            }
             InjectError::CycleDetected {
                 service_info,
                 cycle,
@@ -232,20 +252,18 @@ impl Display for InjectError {
                 service_info.name()
             ),
             InjectError::InvalidProvider { service_info } => {
-                write!(f, "the registered provider for {} returned the wrong type", service_info.name())
+                write!(
+                    f,
+                    "the registered provider for {} returned the wrong type",
+                    service_info.name()
+                )
             }
-            InjectError::MultipleProviders {
-                service_info,
-                providers,
-            } => write!(
+            InjectError::MultipleProviders { service_info } => write!(
                 f,
-                "the requested service {} has {} providers registered (did you mean to request a Services<T> instead?)",
+                "the requested service {} has multiple providers registered (did you mean to request a Services<T> instead?)",
                 service_info.name(),
-                providers
             ),
-            InjectError::OwnedNotSupported {
-                service_info
-            } => write!(
+            InjectError::OwnedNotSupported { service_info } => write!(
                 f,
                 "the registered provider can't provide an owned variant of {}",
                 service_info.name()
@@ -258,11 +276,18 @@ impl Display for InjectError {
                 )
             }
             InjectError::ActivationFailed { service_info, .. } => {
-                write!(f, "an error occurred during activation of {}", service_info.name())
-            },
+                write!(
+                    f,
+                    "an error occurred during activation of {}",
+                    service_info.name()
+                )
+            }
             InjectError::InternalError(message) => {
-                write!(f, "an unexpected error occurred (please report this): {}", message)
-            },
+                write!(
+                    f,
+                    "an unexpected error occurred (please report this to https://github.com/TehPers/runtime_injector/issues): {message}"
+                )
+            }
         }
     }
 }

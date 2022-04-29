@@ -1,6 +1,6 @@
 use crate::{
-    InjectResult, Injector, RequestInfo, Service, ServiceFactory, Svc,
-    TypedProvider,
+    InjectResult, Injector, RequestInfo, Service, ServiceFactory, ServiceInfo,
+    Svc, TypedProvider,
 };
 use std::marker::PhantomData;
 
@@ -35,25 +35,30 @@ impl<D, R, F> TypedProvider for TransientProvider<D, R, F>
 where
     D: Service,
     R: Service,
-    F: ServiceFactory<D, Result = R>,
+    F: Service + ServiceFactory<D, Result = R>,
 {
+    type Interface = dyn Service;
     type Result = R;
 
     fn provide_typed(
-        &mut self,
+        &self,
         injector: &Injector,
         request_info: &RequestInfo,
     ) -> InjectResult<Svc<Self::Result>> {
-        let result = self.factory.invoke(injector, request_info)?;
+        let request_info =
+            request_info.with_request(ServiceInfo::of::<Self::Result>())?;
+        let result = self.factory.invoke(injector, &request_info)?;
         Ok(Svc::new(result))
     }
 
     fn provide_owned_typed(
-        &mut self,
+        &self,
         injector: &Injector,
         request_info: &RequestInfo,
     ) -> InjectResult<Box<Self::Result>> {
-        let result = self.factory.invoke(injector, request_info)?;
+        let request_info =
+            request_info.with_request(ServiceInfo::of::<Self::Result>())?;
+        let result = self.factory.invoke(injector, &request_info)?;
         Ok(Box::new(result))
     }
 }
@@ -107,5 +112,25 @@ where
 {
     fn from(func: F) -> Self {
         func.transient()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[derive(PartialEq, Eq, Debug)]
+    struct Foo(i32);
+
+    /// Transient provider provides the correct value.
+    #[test]
+    fn transient_provider_provides_correct_value() {
+        let mut builder = Injector::builder();
+        builder.provide((|| Foo(42)).transient());
+
+        let injector = builder.build();
+        let foo: Svc<Foo> = injector.get().unwrap();
+
+        assert_eq!(&*foo, &Foo(42));
     }
 }

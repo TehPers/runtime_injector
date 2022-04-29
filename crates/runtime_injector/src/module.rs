@@ -1,4 +1,4 @@
-use crate::{Provider, ProviderMap, RequestParameter};
+use crate::{InterfaceRegistryBuilder, Provider, RequestParameter, Svc};
 use std::collections::HashMap;
 
 /// A collection of providers that can be added all at once to an
@@ -10,22 +10,22 @@ use std::collections::HashMap;
 /// [`define_module!`].
 #[derive(Default)]
 pub struct Module {
-    pub(crate) providers: ProviderMap,
+    pub(crate) registry: InterfaceRegistryBuilder,
     pub(crate) parameters: HashMap<String, Box<dyn RequestParameter>>,
 }
 
 impl Module {
-    /// Assigns the provider for a service type. Multiple providers can be
-    /// registered for a service.
+    /// Inserts a provider for a service type and interface. Multiple providers
+    /// can be registered for a service at once.
     #[allow(clippy::missing_panics_doc)]
-    pub fn provide<P: Provider>(&mut self, provider: P) {
+    pub fn provide<P>(&mut self, provider: P)
+    where
+        P: Provider,
+    {
         // Should never panic
-        self.providers
-            .entry(provider.result())
-            .or_insert_with(|| Some(Vec::new()))
-            .as_mut()
-            .unwrap()
-            .push(Box::new(provider));
+        self.registry
+            .ensure_providers_mut()
+            .add_provider_for(provider.result(), Svc::new(provider));
     }
 
     /// Sets the of a value request parameter for requests made by the injector
@@ -55,7 +55,7 @@ impl Module {
 /// ```
 /// use runtime_injector::{
 ///     define_module, interface, Arg, Injector, IntoSingleton, IntoTransient,
-///     Service, Svc,
+///     Service, Svc, WithArg,
 /// };
 ///
 /// struct Foo(Arg<i32>);
@@ -67,14 +67,7 @@ impl Module {
 /// trait Fooable: Service {}
 /// impl Fooable for Foo {}
 /// impl Fooable for Bar {}
-/// interface! {
-///     dyn Fooable = [
-///         Foo,
-///         Bar,
-///         #[cfg(test)]
-///         Quux,
-///     ]
-/// };
+/// interface!(Fooable);
 ///
 /// let module = define_module! {
 ///     services = [
@@ -82,12 +75,9 @@ impl Module {
 ///     ],
 ///     interfaces = {
 ///         dyn Fooable = [
-///             Foo.singleton(),
+///             Foo.singleton().with_arg(12i32),
 ///             Bar.singleton(),
 ///         ],
-///     },
-///     arguments = {
-///         Foo = [12i32],
 ///     },
 ///
 ///     // If there are multiple interface or service definitions, they are
@@ -116,16 +106,17 @@ impl Module {
 macro_rules! define_module {
     {
         $(
-            $(#[$($attr:meta),*])*
+            $(#[$attr:meta])*
             $key:ident = $value:tt
         ),*
         $(,)?
     } => {
         {
             #[allow(unused_mut)]
-            let mut module = <$crate::Module as ::std::default::Default>::default();
+            let mut module =
+                <$crate::Module as ::std::default::Default>::default();
             $(
-                $(#[$($attr),*])*
+                $(#[$attr])*
                 $crate::define_module!(@provide &mut module, $key = $value);
             )*
             module
@@ -134,38 +125,44 @@ macro_rules! define_module {
     (
         @provide $module:expr,
         services = [
-            $($service:expr),*
+            $(
+                $(#[$attr:meta])*
+                $service:expr
+            ),*
             $(,)?
         ]
     ) => {
-        $($module.provide($service);)*
-    };
-    (
-        @provide $module:expr,
-        interfaces = {
-            $($interface:ty = [
-                $($implementation:expr),*
-                $(,)?
-            ]),*
-            $(,)?
-        }
-    ) => {
         $(
-            $($module.provide($crate::TypedProvider::with_interface::<$interface>($implementation));)*
+            $(#[$attr])*
+            $module.provide($service);
         )*
     };
     (
         @provide $module:expr,
-        arguments = {
-            $($service:ty = [
-                $($arg:expr),*
-                $(,)?
-            ]),*
+        interfaces = {
+            $(
+                $(#[$attr1:meta])*
+                $interface:ty = [
+                    $(
+                        $(#[$attr2:meta])*
+                        $implementation:expr
+                    ),*
+                    $(,)?
+                ]
+            ),*
             $(,)?
         }
     ) => {
         $(
-            $($crate::WithArg::with_arg::<$service, _>($module, $arg);)*
+            $(#[$attr1])*
+            $(
+                $(#[$attr2])*
+                $module.provide(
+                    $crate::WithInterface::with_interface::<$interface>(
+                        $implementation
+                    )
+                );
+            )*
         )*
     };
 }

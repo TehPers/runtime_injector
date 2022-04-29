@@ -1,64 +1,7 @@
 use crate::{
-    InjectResult, InjectorBuilder, Interface, Provider, Request, RequestInfo,
-    ServiceInfo, Services, Svc,
+    FromProvider, InjectResult, InjectorBuilder, InterfaceRegistry, Providers,
+    Request, RequestInfo, Svc,
 };
-use std::collections::HashMap;
-
-pub(crate) type ProviderMap =
-    HashMap<ServiceInfo, Option<Vec<Box<dyn Provider>>>>;
-
-pub(crate) trait MapContainerEx<T> {
-    fn new(value: T) -> Self;
-    fn with_inner<R, F: FnOnce(&T) -> R>(&self, f: F) -> R;
-    fn with_inner_mut<R, F: FnOnce(&mut T) -> R>(&self, f: F) -> R;
-}
-
-#[cfg(feature = "rc")]
-mod types {
-    use super::MapContainerEx;
-    use std::{cell::RefCell, rc::Rc};
-
-    pub type MapContainer<T> = Rc<RefCell<T>>;
-
-    impl<T> MapContainerEx<T> for MapContainer<T> {
-        fn new(value: T) -> Self {
-            Rc::new(RefCell::new(value))
-        }
-
-        fn with_inner<R, F: FnOnce(&T) -> R>(&self, f: F) -> R {
-            f(&*self.borrow())
-        }
-
-        fn with_inner_mut<R, F: FnOnce(&mut T) -> R>(&self, f: F) -> R {
-            f(&mut *self.borrow_mut())
-        }
-    }
-}
-
-#[cfg(feature = "arc")]
-mod types {
-    use super::MapContainerEx;
-    use std::sync::{Arc, Mutex};
-
-    pub type MapContainer<T> = Arc<Mutex<T>>;
-
-    impl<T> MapContainerEx<T> for MapContainer<T> {
-        fn new(value: T) -> Self {
-            Arc::new(Mutex::new(value))
-        }
-
-        fn with_inner<R, F: FnOnce(&T) -> R>(&self, f: F) -> R {
-            f(&*self.lock().unwrap())
-        }
-
-        fn with_inner_mut<R, F: FnOnce(&mut T) -> R>(&self, f: F) -> R {
-            f(&mut *self.lock().unwrap())
-        }
-    }
-}
-
-#[allow(clippy::wildcard_imports)]
-pub(crate) use types::*;
 
 /// A runtime dependency injection container. This holds all the bindings
 /// between service types and their providers, as well as all the mappings from
@@ -114,9 +57,9 @@ pub(crate) use types::*;
 /// assert_eq!(1.0, value1);
 /// assert_eq!(2.0, value2);
 /// ```
-#[derive(Clone, Default)]
+#[derive(Clone, Debug, Default)]
 pub struct Injector {
-    provider_map: MapContainer<ProviderMap>,
+    interface_registry: Svc<InterfaceRegistry>,
     root_request_info: Svc<RequestInfo>,
 }
 
@@ -128,26 +71,12 @@ impl Injector {
         InjectorBuilder::default()
     }
 
-    /// Creates a new injector directly from its providers and implementations.
-    /// Prefer [`Injector::builder()`] for creating new injectors instead.
-    #[must_use]
-    #[deprecated(
-        note = "prefer using a builder; this will be removed in 0.5",
-        since = "0.3.1"
-    )]
-    pub fn new(providers: ProviderMap) -> Self {
-        Injector {
-            provider_map: MapContainerEx::new(providers),
-            root_request_info: Svc::new(RequestInfo::default()),
-        }
-    }
-
     pub(crate) fn new_from_parts(
-        providers: ProviderMap,
+        interface_registry: InterfaceRegistry,
         request_info: RequestInfo,
     ) -> Self {
         Injector {
-            provider_map: MapContainerEx::new(providers),
+            interface_registry: Svc::new(interface_registry),
             root_request_info: Svc::new(request_info),
         }
     }
@@ -155,10 +84,10 @@ impl Injector {
     /// Performs a request for a service. There are several types of requests
     /// that can be made to the service container by default:
     ///
-    /// - [`Svc<T>`](crate::Svc): Requests a service pointer to the given
-    ///   interface and creates an instance of the service if needed. If
-    ///   multiple service providers are registered for that interface, then
-    ///   returns an error instead.
+    /// - [`Svc<T>`]: Requests a service pointer to the given interface and
+    ///   creates an instance of the service if needed. If multiple service
+    ///   providers are registered for that interface, then returns an error
+    ///   instead.
     /// - [`Box<T>`]: Requests an owned service pointer to the given interface
     ///   and creates an instance of the service. Not all service providers can
     ///   provide owned versions of their services, so this may fail for some
@@ -176,7 +105,7 @@ impl Injector {
     ///   can't provide owned pointers, then returns an error instead.
     /// - [`Services<T>`]: Requests all the implementations of an interface.
     ///   This will lazily create the services on demand. See the
-    ///   [documentation for `Services<T>`](Services<T>) for more details.
+    ///   [documentation for `Services<T>`][`Services<T>`] for more details.
     /// - [`Injector`]: Requests a clone of the injector. While it doesn't make
     ///   much sense to request this directly from the injector itself, this
     ///   allows the injector to be requested as a dependency inside of
@@ -186,6 +115,7 @@ impl Injector {
     /// - [`Factory<R>`]: Lazily performs requests on demand.
     ///
     /// [`Factory<R>`]: crate::Factory<R>
+    /// [`Services<T>`]: crate::Services<T>
     ///
     /// See the [documentation for `Request`](Request) for more information on
     /// what can be requested. Custom request types can also be created by
@@ -219,11 +149,12 @@ impl Injector {
     ///
     /// ```
     /// use runtime_injector::{
-    ///     interface, Injector, IntoSingleton, Svc, TypedProvider, Service
+    ///     interface, Injector, IntoSingleton, Service, Svc, TypedProvider,
+    ///     WithInterface,
     /// };
     ///
     /// trait Foo: Service {}
-    /// interface!(dyn Foo = [Bar]);
+    /// interface!(Foo);
     ///
     /// #[derive(Default)]
     /// struct Bar;
@@ -241,11 +172,12 @@ impl Injector {
     ///
     /// ```
     /// use runtime_injector::{
-    ///     interface, Injector, IntoSingleton, Svc, TypedProvider, Service
+    ///     interface, Injector, IntoSingleton, Service, Svc, TypedProvider,
+    ///     WithInterface,
     /// };
     ///
     /// trait Foo: Service {}
-    /// interface!(dyn Foo = [Bar, Baz]);
+    /// interface!(Foo);
     ///
     /// #[derive(Default)]
     /// struct Bar;
@@ -305,17 +237,10 @@ impl Injector {
         R::request(self, request_info)
     }
 
-    /// Gets implementations of a service from the container. This is
-    /// equivalent to requesting [`Services<T>`] from [`Injector::get()`].
-    pub(crate) fn get_service<I: ?Sized + Interface>(
-        &self,
-        request_info: &RequestInfo,
-    ) -> InjectResult<Services<I>> {
-        Services::new(
-            self.clone(),
-            self.provider_map.clone(),
-            request_info.clone(),
-        )
+    #[doc(hidden)]
+    #[must_use]
+    pub fn get_providers<S: ?Sized + FromProvider>(&self) -> Providers<S> {
+        Providers::new(self.interface_registry.get_providers())
     }
 }
 
@@ -323,7 +248,7 @@ impl Injector {
 mod tests {
     use crate::{
         DynSvc, InjectError, InjectResult, Injector, Provider, RequestInfo,
-        ServiceInfo, Svc,
+        Service, ServiceInfo, Svc,
     };
     use core::panic;
 
@@ -331,12 +256,14 @@ mod tests {
     fn get_exact_returns_error_on_invalid_provider() {
         struct BadProvider;
         impl Provider for BadProvider {
+            type Interface = dyn Service;
+
             fn result(&self) -> ServiceInfo {
                 ServiceInfo::of::<i32>()
             }
 
             fn provide(
-                &mut self,
+                &self,
                 _injector: &Injector,
                 _request_info: &RequestInfo,
             ) -> InjectResult<DynSvc> {
