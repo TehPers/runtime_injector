@@ -1,5 +1,9 @@
 //! # Inversion of control
 //!
+//!
+//!
+//! ## Testing and mocking
+//!
 //! As an application grows, different components within the application need
 //! to be tested in isolation. Additionally, different deployment
 //! configurations may require different implementations of a service. What

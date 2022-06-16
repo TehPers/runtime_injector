@@ -1,5 +1,6 @@
 use crate::{
-    InjectError, InjectResult, Injector, Request, RequestInfo, ServiceInfo,
+    InjectError, InjectResult, Injector, MappedServiceFactory, Request,
+    RequestInfo, Service, ServiceInfo,
 };
 use std::any::Any;
 
@@ -34,6 +35,15 @@ pub trait ServiceFactory<D> {
         injector: &Injector,
         request_info: &RequestInfo,
     ) -> InjectResult<Self::Result>;
+
+    fn map<R, F>(self, f: F) -> MappedServiceFactory<R, Self, D, F>
+    where
+        Self: Sized,
+        R: Service,
+        F: Fn(Self::Result) -> R,
+    {
+        MappedServiceFactory::new(self, f)
+    }
 }
 
 macro_rules! impl_provider_function {

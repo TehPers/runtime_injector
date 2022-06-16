@@ -267,6 +267,8 @@ pub use requests::*;
 pub use service_factories::*;
 pub use services::*;
 
+// TODO: uncomment this:
+// #[cfg(doc)]
 pub mod docs;
 
 #[doc(hidden)]
